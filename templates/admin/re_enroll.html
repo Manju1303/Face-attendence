@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Re-enrol Biometric Face: {{ student.full_name }} - BioAttendAI{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="fw-bold mb-0"><i class="bi bi-camera me-2 text-primary"></i>Biometric Re-enrollment</h5>
+            <small class="text-muted">Student: <strong>{{ student.full_name }}</strong> (<code>{{ student.register_number }}</code>)</small>
+          </div>
+          <a href="{{ url_for('admin.student_detail', student_id=student.id) }}" class="btn btn-sm btn-outline-secondary">
+            Cancel
+          </a>
+        </div>
+        
+        <div class="card-body p-4">
+          <div class="alert alert-warning small mb-4">
+            <i class="bi bi-exclamation-triangle-fill me-1 text-warning"></i>
+            Re-enrolling will replace all existing face embeddings with fresh captures. Ensure authorization and verify identity before continuing.
+          </div>
+
+          <form method="POST" id="reEnrollForm">
+            <input type="hidden" name="face_samples" id="faceSamplesInput" value="[]">
+
+            <!-- Camera Viewport -->
+            <div class="camera-container mb-3" id="cameraBox">
+              <video id="webcamVideo" class="camera-feed" autoplay playsinline muted></video>
+              <div class="scan-overlay">
+                <div class="face-guide" id="faceGuide">
+                  <div class="scan-line"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div class="btn-group">
+                <button type="button" class="btn btn-success px-4" id="captureBtn">
+                  <i class="bi bi-camera me-1"></i> Capture Sample
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="restartCamBtn" title="Restart Camera">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+
+              <div class="d-flex align-items-center gap-2">
+                <span class="small text-muted">Or upload:</span>
+                <input type="file" id="fileUploadInput" class="form-control form-control-sm" accept="image/*" style="max-width: 200px;">
+              </div>
+            </div>
+
+            <div id="captureFeedback" class="alert alert-light border small py-2 d-none">
+              <i class="bi bi-info-circle me-1"></i> <span id="feedbackText">Ready to capture.</span>
+            </div>
+
+            <div class="mb-4">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-semibold small text-muted text-uppercase mb-0">New Face Samples</label>
+                <span class="badge bg-primary-subtle text-primary border" id="sampleCountBadge">0 / 3 Samples</span>
+              </div>
+              <div class="d-flex flex-wrap gap-2" id="samplesGallery">
+                <div class="text-muted small py-3" id="noSamplesPrompt">
+                  <i class="bi bi-images me-1"></i> No new samples captured yet.
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 border-top pt-3">
+              <a href="{{ url_for('admin.student_detail', student_id=student.id) }}" class="btn btn-light">Cancel</a>
+              <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check2 me-1"></i> Update Biometric Encodings</button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let samples = [];
+  const video = document.getElementById('webcamVideo');
+  const captureBtn = document.getElementById('captureBtn');
+  const restartCamBtn = document.getElementById('restartCamBtn');
+  const samplesGallery = document.getElementById('samplesGallery');
+  const sampleCountBadge = document.getElementById('sampleCountBadge');
+  const faceSamplesInput = document.getElementById('faceSamplesInput');
+  const feedbackBox = document.getElementById('captureFeedback');
+  const feedbackText = document.getElementById('feedbackText');
+  const noSamplesPrompt = document.getElementById('noSamplesPrompt');
+  const fileUploadInput = document.getElementById('fileUploadInput');
+  const faceGuide = document.getElementById('faceGuide');
+
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
+      });
+      video.srcObject = stream;
+    } catch (err) {
+      console.error(err);
+      showFeedback("Unable to access camera.", "danger");
+    }
+  }
+  startCamera();
+  restartCamBtn.addEventListener('click', startCamera);
+
+  function showFeedback(msg, type = "info") {
+    feedbackBox.className = `alert alert-${type} border small py-2`;
+    feedbackText.innerText = msg;
+    feedbackBox.classList.remove('d-none');
+  }
+
+  function captureFrame() {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.92);
+  }
+
+  async function validateAndAddSample(b64) {
+    showFeedback("Analyzing face sample...", "info");
+    faceGuide.classList.add('active');
+    try {
+      const resp = await fetch("{{ url_for('admin.api_validate_sample') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: b64 })
+      });
+      const data = await resp.json();
+      if (data.valid) {
+        samples.push(b64);
+        renderGallery();
+        showFeedback(`Face sample ${samples.length} valid! (Confidence: ${data.confidence}%)`, "success");
+      } else {
+        showFeedback(data.message || "Face not detected.", "danger");
+      }
+    } catch (err) {
+      samples.push(b64);
+      renderGallery();
+      showFeedback(`Sample ${samples.length} recorded.`, "info");
+    } finally {
+      setTimeout(() => faceGuide.classList.remove('active'), 800);
+    }
+  }
+
+  captureBtn.addEventListener('click', () => {
+    if (samples.length >= 5) {
+      showFeedback("Maximum 5 samples reached.", "warning");
+      return;
+    }
+    validateAndAddSample(captureFrame());
+  });
+
+  fileUploadInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      validateAndAddSample(event.target.result);
+      fileUploadInput.value = '';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function renderGallery() {
+    samplesGallery.innerHTML = '';
+    if (samples.length === 0) {
+      samplesGallery.appendChild(noSamplesPrompt);
+      sampleCountBadge.innerText = `0 / 3 Samples`;
+    } else {
+      samples.forEach((s, idx) => {
+        const card = document.createElement('div');
+        card.className = 'sample-thumb-card';
+        card.innerHTML = `
+          <img src="${s}" alt="Sample ${idx + 1}">
+          <button type="button" class="remove-btn" onclick="removeSample(${idx})">&times;</button>
+        `;
+        samplesGallery.appendChild(card);
+      });
+      sampleCountBadge.innerText = `${samples.length} / 3 Samples`;
+    }
+    faceSamplesInput.value = JSON.stringify(samples);
+  }
+
+  window.removeSample = function(idx) {
+    samples.splice(idx, 1);
+    renderGallery();
+  };
+
+  document.getElementById('reEnrollForm').addEventListener('submit', (e) => {
+    if (samples.length < 1) {
+      e.preventDefault();
+      alert("Please capture at least one clear face sample to re-enrol.");
+    }
+  });
+</script>
+{% endblock %}
+

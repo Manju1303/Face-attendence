@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance Summaries & Analytics - BioAttendAI{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-2">
+  
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h3 class="fw-bold mb-1">Attendance Analytics & Monthly Summary</h3>
+      <p class="text-muted small mb-0">Period: <strong>{{ current_month }}</strong> | Total Active Enrolled Students: <strong>{{ total_students }}</strong></p>
+    </div>
+    <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+      <i class="bi bi-printer me-1"></i> Print / Save PDF
+    </button>
+  </div>
+
+  <!-- Summary Table -->
+  <div class="card shadow-sm">
+    <div class="card-header py-3">
+      <h6 class="fw-bold mb-0"><i class="bi bi-person-check-fill me-2 text-primary"></i>Student Cumulative Attendance ({{ current_month }})</h6>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Register No</th>
+            <th>Student Name</th>
+            <th>Department</th>
+            <th>Class / Year</th>
+            <th class="text-center">Total Sessions</th>
+            <th class="text-center">Attended</th>
+            <th>Attendance %</th>
+            <th>Status Indicator</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for stat in student_stats %}
+          <tr>
+            <td><code>{{ stat.student.register_number }}</code></td>
+            <td class="fw-semibold">{{ stat.student.full_name }}</td>
+            <td>{{ stat.student.department }}</td>
+            <td>{{ stat.student.class_year }}</td>
+            <td class="text-center">{{ stat.sessions }}</td>
+            <td class="text-center fw-bold text-success">{{ stat.present }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold text-dark" style="min-width: 45px;">{{ stat.pct }}%</span>
+                <div class="progress flex-grow-1" style="height: 6px;">
+                  <div class="progress-bar {% if stat.pct >= 75 %}bg-success{% elif stat.pct >= 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                       role="progressbar" style="width: {{ stat.pct }}%;"></div>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if stat.pct >= 75 %}
+                <span class="badge badge-soft-success px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i>Good (Eligible)</span>
+              {% elif stat.pct >= 60 %}
+                <span class="badge badge-soft-warning px-2 py-1"><i class="bi bi-exclamation-circle-fill me-1"></i>Warning (<75%)</span>
+              {% else %}
+                <span class="badge badge-soft-danger px-2 py-1"><i class="bi bi-x-octagon-fill me-1"></i>Critical Shortage</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-5 text-muted">
+              No enrolled student records available for reporting.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+

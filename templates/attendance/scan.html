@@ -1,0 +1,492 @@
+{% extends "base.html" %}
+
+{% block title %}Student Face Attendance Scanner - BioAttendAI{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+  
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+
+      <!-- Header Banner -->
+      <div class="text-center mb-4">
+        <h2 class="fw-bold mb-1">
+          <i class="bi bi-person-bounding-box text-primary me-2"></i>Biometric Attendance Kiosk
+        </h2>
+        <p class="text-muted mb-0">
+          <i class="bi bi-calendar-check me-1"></i> {{ today }} | Face Recognition & Auto-Verification Portal
+        </p>
+      </div>
+
+      <div class="row g-4">
+        
+        <!-- Camera Column -->
+        <div class="col-md-7">
+          <div class="card shadow border-0 rounded-4 overflow-hidden">
+            <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
+              <span class="small fw-semibold">
+                <i class="bi bi-camera-video-fill text-danger me-2" id="cameraStatusDot"></i>
+                <span id="cameraStatusText">Connecting Camera...</span>
+              </span>
+              
+              <!-- Session Selector -->
+              <div class="d-flex align-items-center gap-2">
+                <label for="sessionSelect" class="small text-white-50 mb-0 d-none d-sm-inline">Session:</label>
+                <select id="sessionSelect" class="form-select form-select-sm bg-dark text-white border-secondary py-1" style="max-width: 220px;">
+                  {% for s in sessions %}
+                    <option value="{{ s.id }}">
+                      {{ s.session_name }} ({{ s.start_time.strftime('%H:%M') }}-{{ s.end_time.strftime('%H:%M') }})
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <!-- Video Viewport -->
+            <div class="card-body p-0 bg-black">
+              <div class="camera-container" id="cameraBox">
+                <video id="webcam" class="camera-feed" autoplay playsinline muted></video>
+                <div class="scan-overlay">
+                  <div class="face-guide" id="faceGuide">
+                    <div class="scan-line"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Controls Footer -->
+            <div class="card-footer bg-light p-3">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="form-check form-switch mb-0">
+                  <input class="form-check-input" type="checkbox" role="switch" id="autoScanToggle">
+                  <label class="form-check-label fw-semibold small text-muted" for="autoScanToggle">
+                    Auto-Scan Mode (Continuous)
+                  </label>
+                </div>
+
+                <div class="btn-group">
+                  <button type="button" class="btn btn-primary px-4 fw-semibold shadow-sm" id="scanBtn">
+                    <i class="bi bi-upc-scan me-1"></i> Scan Face
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" id="restartCameraBtn" title="Restart Camera">
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Verification Results & Feedback Column -->
+        <div class="col-md-5">
+          <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-header py-3 bg-white border-bottom">
+              <h6 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-shield-check me-2 text-primary"></i>Verification Status
+              </h6>
+            </div>
+
+            <div class="card-body p-4 d-flex flex-column justify-content-center text-center" id="resultContainer">
+              
+              <!-- Idle State Display -->
+              <div id="idleState" class="py-4">
+                <div class="display-3 text-primary mb-3">
+                  <i class="bi bi-person-badge"></i>
+                </div>
+                <h5 class="fw-bold text-dark">Ready to Verify</h5>
+                <p class="text-muted small px-3">
+                  Look directly into the camera inside the oval guide. 
+                  Click <strong>Scan Face</strong> or switch on <strong>Auto-Scan</strong>.
+                </p>
+                <div class="badge bg-light text-secondary border px-3 py-2 small">
+                  <i class="bi bi-cpu me-1 text-primary"></i> DNN YuNet + SFace Engine
+                </div>
+              </div>
+
+              <!-- Scanning In-Progress State -->
+              <div id="scanningState" class="py-4 d-none">
+                <div class="spinner-border text-primary mb-3" style="width: 3.5rem; height: 3.5rem;" role="status">
+                  <span class="visually-hidden">Scanning...</span>
+                </div>
+                <h5 class="fw-bold text-dark">Analyzing Face...</h5>
+                <p class="text-muted small">Generating 128D biometric embedding & emotion profile</p>
+              </div>
+
+              <!-- Result Banner Box -->
+              <div id="resultCard" class="result-box d-none text-start">
+                
+                <!-- Success Header -->
+                <div class="d-flex align-items-center gap-3 mb-3" id="resultHeader">
+                  <div id="resultIconBox" class="fs-2 text-success">
+                    <i class="bi bi-check-circle-fill"></i>
+                  </div>
+                  <div>
+                    <h5 class="fw-bold mb-0" id="resultTitle">Attendance Recorded</h5>
+                    <small id="resultSubtitle" class="text-muted">Biometric match confirmed</small>
+                  </div>
+                </div>
+
+                <!-- Student Details Panel -->
+                <div id="studentDetailsCard" class="bg-white p-3 rounded-3 border mb-3 shadow-sm d-none">
+                  <div class="d-flex align-items-center gap-3 mb-2">
+                    <div id="studentPhotoWrapper">
+                      <div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5" id="studentInitials">
+                        ?
+                      </div>
+                    </div>
+                    <div>
+                      <h6 class="fw-bold mb-0 text-dark" id="studentName">-</h6>
+                      <code id="studentRegNo" class="small">-</code>
+                    </div>
+                  </div>
+
+                  <hr class="my-2">
+
+                  <div class="small">
+                    <div class="d-flex justify-content-between mb-1">
+                      <span class="text-muted">Department:</span>
+                      <span class="fw-semibold text-end" id="studentDept">-</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                      <span class="text-muted">Class / Year:</span>
+                      <span class="fw-semibold" id="studentClass">-</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                      <span class="text-muted">Check-In Time:</span>
+                      <span class="fw-semibold text-primary" id="checkInTime">-</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                      <span class="text-muted">Biometric Match:</span>
+                      <span class="fw-bold text-success" id="matchConfidence">-</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                      <span class="text-muted">Facial Emotion:</span>
+                      <span class="badge bg-info-subtle text-info border" id="facialEmotion">Neutral</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Message Text -->
+                <div class="small fw-semibold" id="resultMessageText"></div>
+              </div>
+
+            </div>
+
+            <!-- Calibration & System Info Footer -->
+            <div class="card-footer bg-light p-3 small text-muted d-flex justify-content-between align-items-center">
+              <span>Threshold: <strong>&ge; 60%</strong> Cosine Sim</span>
+              <span><i class="bi bi-shield-lock me-1"></i> Duplicate Block Active</span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const video = document.getElementById('webcam');
+  const scanBtn = document.getElementById('scanBtn');
+  const restartCameraBtn = document.getElementById('restartCameraBtn');
+  const autoScanToggle = document.getElementById('autoScanToggle');
+  const sessionSelect = document.getElementById('sessionSelect');
+  const cameraBox = document.getElementById('cameraBox');
+  const faceGuide = document.getElementById('faceGuide');
+  const cameraStatusDot = document.getElementById('cameraStatusDot');
+  const cameraStatusText = document.getElementById('cameraStatusText');
+
+  // UI state elements
+  const idleState = document.getElementById('idleState');
+  const scanningState = document.getElementById('scanningState');
+  const resultCard = document.getElementById('resultCard');
+  const resultHeader = document.getElementById('resultHeader');
+  const resultIconBox = document.getElementById('resultIconBox');
+  const resultTitle = document.getElementById('resultTitle');
+  const resultSubtitle = document.getElementById('resultSubtitle');
+  const studentDetailsCard = document.getElementById('studentDetailsCard');
+  const studentPhotoWrapper = document.getElementById('studentPhotoWrapper');
+  const studentInitials = document.getElementById('studentInitials');
+  const studentName = document.getElementById('studentName');
+  const studentRegNo = document.getElementById('studentRegNo');
+  const studentDept = document.getElementById('studentDept');
+  const studentClass = document.getElementById('studentClass');
+  const checkInTime = document.getElementById('checkInTime');
+  const matchConfidence = document.getElementById('matchConfidence');
+  const facialEmotion = document.getElementById('facialEmotion');
+  const resultMessageText = document.getElementById('resultMessageText');
+
+  let autoScanTimer = null;
+  let isScanning = false;
+  let lastScannedStudentId = null;
+  let lastScanTimestamp = 0;
+
+  // Initialize camera
+  async function initWebcam() {
+    try {
+      cameraStatusDot.className = "bi bi-camera-video-fill text-warning me-2";
+      cameraStatusText.innerText = "Requesting Camera Access...";
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user"
+        }
+      });
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        cameraStatusDot.className = "bi bi-camera-video-fill text-success me-2";
+        cameraStatusText.innerText = "Live Webcam Stream Active";
+      };
+    } catch (err) {
+      console.error("Camera Error:", err);
+      cameraStatusDot.className = "bi bi-camera-video-off-fill text-danger me-2";
+      cameraStatusText.innerText = "Camera Denied / Not Found";
+      showResultState({
+        type: 'danger',
+        title: 'Camera Access Error',
+        subtitle: 'Hardware / Permission Blocked',
+        message: 'Could not access the webcam. Please allow camera permissions in your browser bar.'
+      });
+    }
+  }
+
+  initWebcam();
+  restartCameraBtn.addEventListener('click', initWebcam);
+
+  // Capture canvas image
+  function captureCanvasFrame() {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    // Flip horizontally to mirror
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.90);
+  }
+
+  function setUIMode(mode) {
+    if (mode === 'scanning') {
+      idleState.classList.add('d-none');
+      resultCard.classList.add('d-none');
+      scanningState.classList.remove('d-none');
+      cameraBox.classList.add('scanning');
+      scanBtn.disabled = true;
+    } else if (mode === 'result') {
+      idleState.classList.add('d-none');
+      scanningState.classList.add('d-none');
+      resultCard.classList.remove('d-none');
+      cameraBox.classList.remove('scanning');
+      scanBtn.disabled = false;
+    } else { // idle
+      scanningState.classList.add('d-none');
+      resultCard.classList.add('d-none');
+      idleState.classList.remove('d-none');
+      cameraBox.classList.remove('scanning');
+      scanBtn.disabled = false;
+    }
+  }
+
+  function showResultState({ type, title, subtitle, message, student, timeStr, conf, emotion }) {
+    setUIMode('result');
+    resultCard.className = `result-box result-${type} text-start`;
+
+    // Icon
+    if (type === 'success') {
+      resultIconBox.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+    } else if (type === 'info') {
+      resultIconBox.innerHTML = '<i class="bi bi-info-circle-fill text-primary"></i>';
+    } else if (type === 'warning') {
+      resultIconBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-warning"></i>';
+    } else {
+      resultIconBox.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i>';
+    }
+
+    resultTitle.innerText = title;
+    resultSubtitle.innerText = subtitle;
+    resultMessageText.innerText = message;
+
+    if (student) {
+      studentDetailsCard.classList.remove('d-none');
+      studentName.innerText = student.name;
+      studentRegNo.innerText = student.register_number;
+      studentDept.innerText = student.department;
+      studentClass.innerText = student.class_year;
+      checkInTime.innerText = timeStr || '-';
+      matchConfidence.innerText = conf ? `${conf}%` : 'High';
+      facialEmotion.innerText = emotion || 'Neutral';
+
+      if (student.photo) {
+        studentPhotoWrapper.innerHTML = `<img src="/uploads/students/${student.photo}" class="student-avatar" alt="Avatar">`;
+      } else {
+        studentPhotoWrapper.innerHTML = `<div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5">${student.name[0]}</div>`;
+      }
+    } else {
+      studentDetailsCard.classList.add('d-none');
+    }
+  }
+
+  // Verification request
+  async function performScan() {
+    if (isScanning) return;
+    if (!video.videoWidth) {
+      showResultState({
+        type: 'danger',
+        title: 'Camera Not Ready',
+        subtitle: 'Awaiting video feed',
+        message: 'Please wait for the live webcam preview to initialize.'
+      });
+      return;
+    }
+
+    isScanning = true;
+    setUIMode('scanning');
+
+    try {
+      const b64 = captureCanvasFrame();
+      const sessionId = sessionSelect.value;
+
+      const resp = await fetch("{{ url_for('attendance.verify_attendance') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: b64,
+          session_id: sessionId
+        })
+      });
+
+      const res = await resp.json();
+
+      if (res.status === 'SUCCESS') {
+        showResultState({
+          type: 'success',
+          title: 'Attendance Verified!',
+          subtitle: `Session: ${res.session_name}`,
+          message: res.message,
+          student: res.student,
+          timeStr: res.check_in_time,
+          conf: res.confidence,
+          emotion: res.emotion
+        });
+        playTone('success');
+      } else if (res.status === 'ALREADY_MARKED') {
+        showResultState({
+          type: 'info',
+          title: 'Already Marked',
+          subtitle: `Session: ${res.session_name}`,
+          message: res.message,
+          student: res.student,
+          timeStr: res.check_in_time,
+          conf: res.confidence,
+          emotion: res.emotion
+        });
+        playTone('info');
+      } else if (res.status === 'NO_FACE') {
+        showResultState({
+          type: 'warning',
+          title: 'No Face Detected',
+          subtitle: 'Position face clearly',
+          message: res.message
+        });
+      } else if (res.status === 'UNCERTAIN') {
+        showResultState({
+          type: 'warning',
+          title: 'Verification Uncertain',
+          subtitle: `Confidence: ${res.confidence || 0}%`,
+          message: res.message
+        });
+        playTone('error');
+      } else if (res.status === 'UNRECOGNIZED') {
+        showResultState({
+          type: 'danger',
+          title: 'Face Not Recognized',
+          subtitle: 'Identity unregistered',
+          message: res.message
+        });
+        playTone('error');
+      } else {
+        showResultState({
+          type: 'danger',
+          title: 'Verification Notice',
+          subtitle: res.status,
+          message: res.message || 'System encountered an error.'
+        });
+      }
+
+    } catch (err) {
+      console.error(err);
+      showResultState({
+        type: 'danger',
+        title: 'Communication Error',
+        subtitle: 'Network / Server Failure',
+        message: 'Could not contact the face verification server.'
+      });
+    } finally {
+      isScanning = false;
+    }
+  }
+
+  scanBtn.addEventListener('click', performScan);
+
+  // Auto-Scan interval logic
+  autoScanToggle.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      autoScanTimer = setInterval(() => {
+        if (!isScanning) {
+          performScan();
+        }
+      }, 3000); // scan every 3 seconds
+    } else {
+      if (autoScanTimer) {
+        clearInterval(autoScanTimer);
+        autoScanTimer = null;
+      }
+    }
+  });
+
+  // Audio feedback synthesis using Web Audio API
+  function playTone(type) {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'success') {
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } else if (type === 'info') {
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+      } else if (type === 'error') {
+        osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(180, audioCtx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      }
+    } catch (e) {
+      // AudioContext disallowed or muted
+    }
+  }
+</script>
+{% endblock %}
+

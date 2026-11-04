@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Administrator Authentication - BioAttendAI{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+      <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+        <div class="card-header bg-primary text-white text-center py-4 border-0">
+          <div class="mb-2">
+            <i class="bi bi-shield-lock-fill display-4"></i>
+          </div>
+          <h4 class="fw-bold mb-0">Admin Portal</h4>
+          <p class="text-white-50 small mb-0">Biometric Attendance Management</p>
+        </div>
+        
+        <div class="card-body p-4 p-md-5">
+          <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+            <div class="mb-3">
+              <label for="username" class="form-label fw-semibold">Username</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                <input type="text" class="form-control" id="username" name="username" placeholder="e.g. admin" required autofocus>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label for="password" class="form-label fw-semibold">Password</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-key"></i></span>
+                <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold rounded-3 mb-3 shadow-sm">
+              <i class="bi bi-box-arrow-in-right me-1"></i> Sign In to Dashboard
+            </button>
+          </form>
+
+          <div class="alert alert-info py-2 px-3 small border-0 bg-info-subtle text-info-emphasis rounded-3 mb-0">
+            <i class="bi bi-info-circle me-1"></i> Default credentials: <strong>admin</strong> / <strong>admin123</strong>
+          </div>
+        </div>
+
+        <div class="card-footer bg-light text-center py-3 border-top">
+          <a href="{{ url_for('attendance.scan_page') }}" class="text-decoration-none small text-muted">
+            <i class="bi bi-arrow-left me-1"></i> Back to Student Attendance Scanner
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
