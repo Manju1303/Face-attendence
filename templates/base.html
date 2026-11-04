@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Biometric Face Attendance System{% endblock %}</title>
+  <title>{% block title %}BioAttendAI - Biometric Face Attendance System{% endblock %}</title>
   
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -16,56 +16,60 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-  <!-- Custom CSS -->
+  <!-- Custom Design System -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
 
   <!-- Navigation Bar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-2 shadow-sm sticky-top">
-    <div class="container-fluid px-4">
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom py-2 shadow-sm sticky-top">
+    <div class="container-fluid px-3 px-lg-4">
+      
+      <!-- Brand Logo -->
       <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('attendance.scan_page') }}">
-        <i class="bi bi-person-bounding-box text-primary fs-4"></i>
-        <span>BioAttend<span class="text-primary">AI</span></span>
-        <span class="badge bg-primary-subtle text-primary border border-primary-subtle brand-badge">Vision 5.0</span>
+        <div class="brand-icon-wrapper">
+          <i class="bi bi-person-bounding-box fs-5"></i>
+        </div>
+        <span class="text-white">BioAttend<span class="text-primary fw-bold">AI</span></span>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle d-none d-sm-inline-block" style="font-size: 0.65rem;">Vision 5.0</span>
       </a>
       
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
 
       <div class="collapse navbar-collapse" id="mainNavbar">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-3 gap-1">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'attendance.scan_page' %}active fw-semibold text-white{% endif %}" href="{{ url_for('attendance.scan_page') }}">
-              <i class="bi bi-camera-video me-1"></i> Student Portal (Scanner)
+            <a class="nav-link {% if request.endpoint == 'attendance.scan_page' %}active text-white{% endif %}" href="{{ url_for('attendance.scan_page') }}">
+              <i class="bi bi-camera-video me-1"></i> Student Kiosk
             </a>
           </li>
           
           {% if session.get('admin_id') %}
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active fw-semibold text-white{% endif %}" href="{{ url_for('admin.dashboard') }}">
+            <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active text-white{% endif %}" href="{{ url_for('admin.dashboard') }}">
               <i class="bi bi-speedometer2 me-1"></i> Dashboard
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if 'students' in request.endpoint %}active fw-semibold text-white{% endif %}" href="{{ url_for('admin.students') }}">
+            <a class="nav-link {% if 'students' in request.endpoint %}active text-white{% endif %}" href="{{ url_for('admin.students') }}">
               <i class="bi bi-people me-1"></i> Students
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'admin.attendance' %}active fw-semibold text-white{% endif %}" href="{{ url_for('admin.attendance') }}">
+            <a class="nav-link {% if request.endpoint == 'admin.attendance' %}active text-white{% endif %}" href="{{ url_for('admin.attendance') }}">
               <i class="bi bi-calendar-check me-1"></i> Attendance
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'admin.sessions' %}active fw-semibold text-white{% endif %}" href="{{ url_for('admin.sessions') }}">
+            <a class="nav-link {% if request.endpoint == 'admin.sessions' %}active text-white{% endif %}" href="{{ url_for('admin.sessions') }}">
               <i class="bi bi-clock-history me-1"></i> Sessions
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'admin.reports' %}active fw-semibold text-white{% endif %}" href="{{ url_for('admin.reports') }}">
+            <a class="nav-link {% if request.endpoint == 'admin.reports' %}active text-white{% endif %}" href="{{ url_for('admin.reports') }}">
               <i class="bi bi-bar-chart-line me-1"></i> Reports
             </a>
           </li>
@@ -73,25 +77,33 @@
         </ul>
 
         <ul class="navbar-nav ms-auto align-items-center gap-2">
+          <!-- Live AI Engine Status Pill -->
+          <li class="nav-item d-none d-md-block">
+            <span class="badge bg-dark border border-secondary text-light px-3 py-2 small d-inline-flex align-items-center gap-2">
+              <span class="spinner-grow spinner-grow-sm text-success" style="width: 0.55rem; height: 0.55rem;" role="status"></span>
+              <span>DNN YuNet + SFace Active</span>
+            </span>
+          </li>
+
           {% if session.get('admin_id') %}
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle text-light d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                <i class="bi bi-shield-check me-1"></i> Admin
-              </span>
+            <a class="nav-link dropdown-toggle text-light d-flex align-items-center gap-2 bg-dark border border-secondary px-3 py-1 rounded-3" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-shield-check text-success"></i>
               <span>{{ session.get('admin_username') }}</span>
             </a>
-            <ul class="dropdown-menu dropdown-menu-end shadow">
-              <li><a class="dropdown-item" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-gear me-2"></i>Dashboard</a></li>
-              <li><a class="dropdown-item" href="{{ url_for('admin.add_student') }}"><i class="bi bi-person-plus me-2"></i>Add Student</a></li>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
+              <li><h6 class="dropdown-header text-muted small">Signed in as Administrator</h6></li>
+              <li><a class="dropdown-item py-2" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-grid-fill me-2 text-primary"></i>Admin Overview</a></li>
+              <li><a class="dropdown-item py-2" href="{{ url_for('admin.add_student') }}"><i class="bi bi-person-plus-fill me-2 text-success"></i>Register Student</a></li>
+              <li><a class="dropdown-item py-2" href="{{ url_for('admin.sessions') }}"><i class="bi bi-calendar-plus me-2 text-info"></i>Class Sessions</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+              <li><a class="dropdown-item py-2 text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>
             </ul>
           </li>
           {% else %}
           <li class="nav-item">
-            <a class="btn btn-outline-light btn-sm px-3" href="{{ url_for('auth.login') }}">
-              <i class="bi bi-shield-lock me-1"></i> Admin Login
+            <a class="btn btn-outline-light btn-sm px-3 rounded-3" href="{{ url_for('auth.login') }}">
+              <i class="bi bi-shield-lock me-1 text-primary"></i> Admin Login
             </a>
           </li>
           {% endif %}
@@ -100,12 +112,12 @@
     </div>
   </nav>
 
-  <!-- Flash Messages -->
-  <div class="container-fluid px-4 mt-3">
+  <!-- Flash Messages Banner -->
+  <div class="container-fluid px-3 px-lg-4 mt-3">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+          <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm border-0 rounded-3 mb-3" role="alert">
             <div class="d-flex align-items-center">
               {% if category == 'success' %}
                 <i class="bi bi-check-circle-fill fs-5 me-2 text-success"></i>
@@ -116,17 +128,17 @@
               {% else %}
                 <i class="bi bi-info-circle-fill fs-5 me-2 text-info"></i>
               {% endif %}
-              <div>{{ message }}</div>
+              <div class="fw-medium">{{ message }}</div>
             </div>
-            <button type="button" class="btn-close" data-bs-auto-close="true" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
           </div>
         {% endfor %}
       {% endif %}
     {% endwith %}
   </div>
 
-  <!-- Main Content Container -->
-  <main class="flex-grow-1 py-3">
+  <!-- Page Content -->
+  <main class="flex-grow-1 py-2">
     {% block content %}{% endblock %}
   </main>
 
@@ -134,12 +146,12 @@
   <footer class="py-3 text-center">
     <div class="container d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
       <div>
-        <span class="fw-semibold">Biometric Attendance Management System</span> &copy; 2026.
+        <span class="fw-semibold">BioAttendAI</span> &copy; 2026. Biometric Face Attendance System.
       </div>
       <div class="small text-muted d-flex align-items-center gap-3">
-        <span><i class="bi bi-cpu me-1"></i>OpenCV YuNet + SFace (128D)</span>
-        <span><i class="bi bi-database me-1"></i>SQLite / PostgreSQL Ready</span>
-        <span><i class="bi bi-emoji-smile me-1"></i>FER+ Emotion Recognition</span>
+        <span><i class="bi bi-cpu me-1 text-primary"></i>YuNet + SFace (128D)</span>
+        <span><i class="bi bi-emoji-smile me-1 text-success"></i>FER+ Facial Emotion</span>
+        <span><i class="bi bi-database me-1 text-info"></i>SQLite &amp; PostgreSQL Ready</span>
       </div>
     </div>
   </footer>
@@ -149,4 +161,3 @@
   {% block scripts %}{% endblock %}
 </body>
 </html>
-
