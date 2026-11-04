@@ -1,5 +1,12 @@
 # Biometric Attendance Management System Using Face Recognition (BioAttendAI)
 
+[![GitHub Pages](https://img.shields.io/badge/Live_Demo-GitHub_Pages-2ea44f?style=for-the-badge&logo=github)](https://manju1303.github.io/Face-attendence/)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![OpenCV](https://img.shields.io/badge/OpenCV-5.0%20DNN-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white)](https://opencv.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.1-000000?style=for-the-badge&logo=flask&logoColor=white)](https://palletsprojects.com/p/flask/)
+
+> **🌐 Live Interactive Web Client:** [**https://manju1303.github.io/Face-attendence/**](https://manju1303.github.io/Face-attendence/)
+
 A production-ready, full-stack biometric attendance management system built with Python, Flask, OpenCV Deep Neural Networks (YuNet + SFace), and real-time facial emotion analytics.
 
 ---
