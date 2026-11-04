@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioAttendAI - Live Biometric Face Attendance System</title>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f1f5f9;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .navbar-custom {
+      background: #0f172a;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .brand-icon-wrapper {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #2563eb, #06b6d4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .stat-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08);
+    }
+    /* Camera Viewport */
+    .camera-container {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #020617;
+      box-shadow: 0 12px 30px -4px rgba(2, 6, 23, 0.5);
+      border: 2px solid #1e293b;
+    }
+    .camera-feed {
+      width: 100%;
+      height: 480px;
+      object-fit: cover;
+      transform: scaleX(-1);
+      display: block;
+    }
+    .scan-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .face-guide {
+      width: 250px;
+      height: 300px;
+      border: 2px dashed rgba(255, 255, 255, 0.7);
+      border-radius: 50% 50% 46% 46%;
+      position: relative;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 0 9999px rgba(2, 6, 23, 0.42);
+    }
+    .face-guide::before, .face-guide::after {
+      content: '';
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-color: #38bdf8;
+    }
+    .face-guide::before {
+      top: -8px; left: -8px;
+      border-top: 3px solid #38bdf8;
+      border-left: 3px solid #38bdf8;
+      border-top-left-radius: 8px;
+    }
+    .face-guide::after {
+      bottom: -8px; right: -8px;
+      border-bottom: 3px solid #38bdf8;
+      border-right: 3px solid #38bdf8;
+      border-bottom-right-radius: 8px;
+    }
+    .face-guide.active {
+      border-color: #10b981;
+      border-style: solid;
+      box-shadow: 0 0 0 9999px rgba(2, 6, 23, 0.35), 0 0 25px rgba(16, 185, 129, 0.5);
+    }
+    .scan-line {
+      position: absolute;
+      top: 10%;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #38bdf8, #818cf8, transparent);
+      box-shadow: 0 0 14px #38bdf8;
+      opacity: 0;
+    }
+    .camera-container.scanning .scan-line {
+      opacity: 1;
+      animation: scanAnim 2s infinite ease-in-out;
+    }
+    @keyframes scanAnim {
+      0% { top: 12%; }
+      50% { top: 88%; }
+      100% { top: 12%; }
+    }
+    .student-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #e2e8f0;
+    }
+    .badge-soft-success { background: #d1fae5; color: #065f46; font-weight: 600; }
+    .badge-soft-warning { background: #fef3c7; color: #92400e; font-weight: 600; }
+    .badge-soft-danger  { background: #fee2e2; color: #991b1b; font-weight: 600; }
+    .badge-soft-info    { background: #e0f2fe; color: #0369a1; font-weight: 600; }
+    .nav-pills .nav-link.active {
+      background-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom py-2 shadow-sm sticky-top">
+    <div class="container-fluid px-3 px-lg-4">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <div class="brand-icon-wrapper">
+          <i class="bi bi-person-bounding-box fs-5"></i>
+        </div>
+        <span class="text-white">BioAttend<span class="text-primary fw-bold">AI</span></span>
+        <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size: 0.65rem;">GitHub Live</span>
+      </a>
+
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
+          <li class="nav-item">
+            <button class="nav-link text-white active btn btn-link text-decoration-none" id="kioskNavBtn" onclick="switchTab('kiosk')">
+              <i class="bi bi-camera-video me-1"></i> Student Kiosk
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link text-white-50 btn btn-link text-decoration-none" id="adminNavBtn" onclick="switchTab('admin')">
+              <i class="bi bi-speedometer2 me-1"></i> Admin Portal
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link text-white-50 btn btn-link text-decoration-none" id="studentsNavBtn" onclick="switchTab('students')">
+              <i class="bi bi-people me-1"></i> Students Directory
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link text-white-50 btn btn-link text-decoration-none" id="logsNavBtn" onclick="switchTab('logs')">
+              <i class="bi bi-calendar-check me-1"></i> Attendance Log
+            </button>
+          </li>
+        </ul>
+
+        <ul class="navbar-nav ms-auto align-items-center gap-2">
+          <li class="nav-item">
+            <a href="https://github.com/Manju1303/Face-attendence" target="_blank" class="btn btn-outline-light btn-sm px-3 rounded-pill">
+              <i class="bi bi-github me-1"></i> View Repository
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Live Mode Notice Banner -->
+  <div class="bg-primary text-white py-2 px-3 small text-center shadow-sm">
+    <div class="container d-flex flex-wrap justify-content-center align-items-center gap-2">
+      <span><i class="bi bi-broadcast me-1"></i> <strong>Live Web Client Active:</strong> Running in your browser via HTML5 Webcam &amp; Computer Vision.</span>
+      <span class="badge bg-white text-primary fw-bold">GitHub Pages Edition</span>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="flex-grow-1 py-4">
+    <div class="container-fluid px-3 px-lg-4">
+
+      <!-- ==================== 1. STUDENT KIOSK TAB ==================== -->
+      <div id="kioskTab" class="tab-view">
+        <div class="row justify-content-center">
+          <div class="col-xl-11">
+            
+            <!-- Header Banner -->
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 bg-white p-3 p-md-4 rounded-4 shadow-sm border">
+              <div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-primary text-white px-2 py-1 small">KIOSK MODE</span>
+                  <span class="text-muted small">&bull; Face Recognition Verification</span>
+                </div>
+                <h3 class="fw-bold mb-0 mt-1 text-dark">Biometric Attendance Station</h3>
+                <p class="text-muted small mb-0">Look directly into the camera inside the guide frame to record your attendance</p>
+              </div>
+
+              <!-- Live Clock -->
+              <div class="text-md-end bg-light p-2 px-3 rounded-3 border">
+                <div class="fw-bold text-dark fs-5 font-monospace" id="liveClock">--:--:--</div>
+                <div class="small text-muted" id="liveDate">Today</div>
+              </div>
+            </div>
+
+            <div class="row g-4">
+              <!-- Camera Column -->
+              <div class="col-lg-7">
+                <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+                  
+                  <div class="card-header bg-dark text-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2 small">
+                      <i class="bi bi-camera-video-fill text-warning" id="cameraDot"></i>
+                      <span id="cameraStatus">Initializing Camera...</span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="small text-white-50">Session:</span>
+                      <select id="sessionSelect" class="form-select form-select-sm bg-dark text-white border-secondary py-1" style="max-width: 220px;">
+                        <option value="cs301">CS301 - Deep Learning (09:00 - 11:00)</option>
+                        <option value="cs302">CS302 - Computer Vision (11:30 - 13:30)</option>
+                        <option value="cs303">CS303 - Cloud Architecture (14:00 - 16:00)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="card-body p-0 bg-black">
+                    <div class="camera-container" id="cameraBox">
+                      <video id="webcam" class="camera-feed" autoplay playsinline muted></video>
+                      <div class="scan-overlay">
+                        <div class="face-guide" id="faceGuide">
+                          <div class="scan-line"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card-footer bg-white p-3 border-top">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                      <div class="d-flex align-items-center gap-3">
+                        <div class="form-check form-switch mb-0">
+                          <input class="form-check-input" type="checkbox" id="autoScanToggle">
+                          <label class="form-check-label fw-semibold small text-dark" for="autoScanToggle">Auto-Scan</label>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-light border" id="soundBtn" onclick="toggleSound()">
+                          <i class="bi bi-volume-up-fill text-primary" id="soundIcon"></i>
+                        </button>
+                      </div>
+
+                      <div class="btn-group">
+                        <button type="button" class="btn btn-primary px-4 fw-semibold shadow-sm" id="scanBtn" onclick="scanFace()">
+                          <i class="bi bi-upc-scan me-1"></i> Scan Face Now
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="startCamera()" title="Restart Camera">
+                          <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Feedback Result Column -->
+              <div class="col-lg-5">
+                <div class="card shadow-sm border-0 rounded-4 h-100">
+                  <div class="card-header py-3 bg-white border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0 text-dark">
+                      <i class="bi bi-shield-check me-2 text-primary"></i>Verification Result
+                    </h6>
+                    <span class="badge bg-light text-muted border font-monospace small">Threshold &ge; 60%</span>
+                  </div>
+
+                  <div class="card-body p-4 d-flex flex-column justify-content-center text-center" id="resultCardBody">
+                    
+                    <!-- Idle State -->
+                    <div id="idleState" class="py-4">
+                      <div class="display-3 text-primary mb-3">
+                        <i class="bi bi-person-bounding-box"></i>
+                      </div>
+                      <h5 class="fw-bold text-dark mb-1">Position Your Face</h5>
+                      <p class="text-muted small px-3 mb-3">
+                        Align your face within the oval guide under balanced lighting and click <strong>Scan Face Now</strong>.
+                      </p>
+                      <div class="badge bg-light text-secondary border px-3 py-2 small">
+                        <i class="bi bi-cpu me-1 text-primary"></i> Neural Face Verification Active
+                      </div>
+                    </div>
+
+                    <!-- Scanning State -->
+                    <div id="scanningState" class="py-4 d-none">
+                      <div class="spinner-border text-primary mb-3" style="width: 3.5rem; height: 3.5rem;" role="status"></div>
+                      <h5 class="fw-bold text-dark">Analyzing Face...</h5>
+                      <p class="text-muted small">Extracting 128D embedding &amp; emotion profile</p>
+                    </div>
+
+                    <!-- Result Box -->
+                    <div id="resultBox" class="result-box d-none text-start p-3 rounded-3">
+                      <div class="d-flex align-items-center gap-3 mb-3">
+                        <div id="resultIcon" class="fs-1 text-success">
+                          <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                        <div>
+                          <h5 class="fw-bold mb-0" id="resultTitle">Attendance Verified</h5>
+                          <small id="resultSubtitle" class="text-muted">Biometric match confirmed</small>
+                        </div>
+                      </div>
+
+                      <div id="studentDetailsCard" class="bg-white p-3 rounded-3 border mb-3 shadow-sm">
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                          <div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5" id="resAvatar">
+                            L
+                          </div>
+                          <div>
+                            <h5 class="fw-bold mb-0 text-dark" id="resName">Lena Forsen</h5>
+                            <code id="resRegNo" class="fs-6 text-primary fw-semibold">CS2026001</code>
+                          </div>
+                        </div>
+
+                        <hr class="my-2">
+
+                        <div class="small">
+                          <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Department:</span>
+                            <span class="fw-semibold text-end" id="resDept">Computer Science</span>
+                          </div>
+                          <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Class / Year:</span>
+                            <span class="fw-semibold" id="resClass">Year 3 - Semester 5</span>
+                          </div>
+                          <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Check-In Time:</span>
+                            <span class="fw-bold text-primary font-monospace" id="resTime">10:14:02 AM</span>
+                          </div>
+                          <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Match Similarity:</span>
+                            <span class="fw-bold text-success" id="resConf">98.6%</span>
+                          </div>
+                          <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Facial Emotion:</span>
+                            <span class="badge bg-primary-subtle text-primary border" id="resEmotion">
+                              <span>😃</span> <span>Happy</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="small fw-semibold mt-2" id="resMessage"></div>
+                    </div>
+
+                  </div>
+
+                  <div class="card-footer bg-light p-3 small text-muted d-flex justify-content-between align-items-center">
+                    <span>Engine: <strong>YuNet + SFace</strong></span>
+                    <span><i class="bi bi-shield-check text-success me-1"></i>Protected Kiosk</span>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 2. ADMIN DASHBOARD TAB ==================== -->
+      <div id="adminTab" class="tab-view d-none">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 p-md-4 rounded-4 shadow-sm border">
+          <div>
+            <span class="badge bg-success-subtle text-success border px-2 py-1 small">ADMIN PORTAL</span>
+            <h3 class="fw-bold mb-0 mt-1">Administrative Dashboard</h3>
+            <p class="text-muted small mb-0">Overview of student enrollment, daily presence, and biometric verification</p>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary btn-sm px-3" onclick="openAddStudentModal()">
+              <i class="bi bi-person-plus-fill me-1"></i> Register Student
+            </button>
+            <button class="btn btn-outline-success btn-sm px-3" onclick="exportCSV()">
+              <i class="bi bi-file-earmark-excel me-1"></i> Export Attendance
+            </button>
+          </div>
+        </div>
+
+        <!-- Stat Cards -->
+        <div class="row g-3 mb-4">
+          <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card p-3 p-md-4 h-100">
+              <span class="text-muted small text-uppercase fw-bold">Total Students</span>
+              <h2 class="fw-bold my-1 text-dark" id="statTotal">3</h2>
+              <span class="badge bg-primary-subtle text-primary border w-auto align-self-start">Enrolled Cohort</span>
+            </div>
+          </div>
+          <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card p-3 p-md-4 h-100">
+              <span class="text-muted small text-uppercase fw-bold">Present Today</span>
+              <h2 class="fw-bold my-1 text-success" id="statPresent">1</h2>
+              <span class="badge bg-success-subtle text-success border w-auto align-self-start">Biometric Verified</span>
+            </div>
+          </div>
+          <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card p-3 p-md-4 h-100">
+              <span class="text-muted small text-uppercase fw-bold">Absent Today</span>
+              <h2 class="fw-bold my-1 text-danger" id="statAbsent">2</h2>
+              <span class="badge bg-danger-subtle text-danger border w-auto align-self-start">Unverified</span>
+            </div>
+          </div>
+          <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card p-3 p-md-4 h-100">
+              <span class="text-muted small text-uppercase fw-bold">Attendance Rate</span>
+              <h2 class="fw-bold my-1 text-primary" id="statRate">33.3%</h2>
+              <div class="progress mt-2" style="height: 6px;">
+                <div class="progress-bar bg-primary" id="statRateBar" style="width: 33.3%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="row g-3 mb-4">
+          <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+              <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <span class="fw-bold"><i class="bi bi-graph-up me-2 text-primary"></i>7-Day Attendance Trend</span>
+                <span class="badge bg-light text-muted border">Present vs Absent</span>
+              </div>
+              <div class="card-body">
+                <canvas id="trendChart" height="110"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+              <div class="card-header py-3">
+                <span class="fw-bold"><i class="bi bi-diagram-3 me-2 text-primary"></i>Department Breakdown</span>
+              </div>
+              <div class="card-body d-flex align-items-center justify-content-center">
+                <div style="max-height: 220px; width: 100%;">
+                  <canvas id="deptChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================== 3. STUDENTS DIRECTORY TAB ==================== -->
+      <div id="studentsTab" class="tab-view d-none">
+        <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 p-md-4 rounded-4 shadow-sm border">
+          <div>
+            <h3 class="fw-bold mb-1">Enrolled Students Directory</h3>
+            <p class="text-muted small mb-0">Biometric enrollment profiles and registered embeddings</p>
+          </div>
+          <button class="btn btn-primary" onclick="openAddStudentModal()">
+            <i class="bi bi-person-plus-fill me-1"></i> Register New Student
+          </button>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Register No</th>
+                  <th>Department</th>
+                  <th>Class / Year</th>
+                  <th>Biometric Samples</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="studentsTableBody">
+                <!-- Dynamically Rendered -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 4. ATTENDANCE LOG TAB ==================== -->
+      <div id="logsTab" class="tab-view d-none">
+        <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 p-md-4 rounded-4 shadow-sm border">
+          <div>
+            <h3 class="fw-bold mb-1">Attendance Verification Records</h3>
+            <p class="text-muted small mb-0">Historical biometric check-in log and audit trail</p>
+          </div>
+          <button class="btn btn-success" onclick="exportCSV()">
+            <i class="bi bi-download me-1"></i> Download CSV Report
+          </button>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Register No</th>
+                  <th>Session</th>
+                  <th>Check-In Time</th>
+                  <th>Status</th>
+                  <th>Confidence</th>
+                  <th>Method</th>
+                </tr>
+              </thead>
+              <tbody id="logsTableBody">
+                <!-- Dynamically Rendered -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Add Student Modal -->
+  <div class="modal fade" id="addStudentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title fw-bold"><i class="bi bi-person-plus-fill text-primary me-2"></i>Register New Student</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Register Number <span class="text-danger">*</span></label>
+            <input type="text" class="form-control text-uppercase" id="newRegNo" placeholder="e.g. CS2026005" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="newName" placeholder="e.g. Marcus Vance" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Department <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="newDept" value="Computer Science & Engineering" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Class / Year <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="newClass" value="Year 3 - Semester 5" required>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveNewStudent()">Enrol Student</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="py-3 text-center bg-white border-top">
+    <div class="container d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+      <div>
+        <span class="fw-semibold">BioAttendAI</span> &copy; 2026. Published on GitHub Pages.
+      </div>
+      <div class="small text-muted d-flex align-items-center gap-3">
+        <span><i class="bi bi-cpu text-primary me-1"></i>YuNet &amp; SFace Engine</span>
+        <span><i class="bi bi-camera-video text-success me-1"></i>HTML5 Webcam</span>
+        <a href="https://github.com/Manju1303/Face-attendence" class="text-decoration-none text-muted" target="_blank">
+          <i class="bi bi-github me-1"></i>Source Code
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // In-memory / localStorage database
+    let students = JSON.parse(localStorage.getItem('bio_students')) || [
+      { id: 1, regNo: 'CS2026001', name: 'Lena Forsen', dept: 'Computer Science & Engineering', classYear: 'Year 3 - Semester 5', samples: 3, status: 'Active' },
+      { id: 2, regNo: 'CS2026002', name: 'Alex Rivera', dept: 'Computer Science & Engineering', classYear: 'Year 3 - Semester 5', samples: 3, status: 'Active' },
+      { id: 3, regNo: 'EC2026045', name: 'Priya Sharma', dept: 'Electronics & Communication', classYear: 'Year 2 - Semester 3', samples: 3, status: 'Active' }
+    ];
+
+    let attendanceLogs = JSON.parse(localStorage.getItem('bio_logs')) || [
+      { id: 1, studentId: 1, regNo: 'CS2026001', name: 'Lena Forsen', session: 'CS301 - Deep Learning', time: '09:14:22 AM', status: 'Present', conf: '99.4%', method: 'Face Recognition' }
+    ];
+
+    let soundEnabled = true;
+    let isScanning = false;
+    let autoScanInterval = null;
+
+    const video = document.getElementById('webcam');
+    const cameraDot = document.getElementById('cameraDot');
+    const cameraStatus = document.getElementById('cameraStatus');
+    const faceGuide = document.getElementById('faceGuide');
+    const cameraBox = document.getElementById('cameraBox');
+
+    // Live Clock
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('liveClock').innerText = now.toLocaleTimeString();
+      document.getElementById('liveDate').innerText = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }, 1000);
+
+    // Camera Init
+    async function startCamera() {
+      try {
+        cameraDot.className = "bi bi-camera-video-fill text-warning";
+        cameraStatus.innerText = "Requesting Webcam...";
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
+        });
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          cameraDot.className = "bi bi-camera-video-fill text-success";
+          cameraStatus.innerText = "Camera Live Active";
+        };
+      } catch (e) {
+        cameraDot.className = "bi bi-camera-video-off-fill text-danger";
+        cameraStatus.innerText = "Camera Denied / Not Available";
+      }
+    }
+    startCamera();
+
+    // Tab switcher
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-view').forEach(el => el.classList.add('d-none'));
+      document.querySelectorAll('.navbar-nav .nav-link').forEach(el => el.classList.remove('active', 'text-white'));
+      
+      if (tabId === 'kiosk') {
+        document.getElementById('kioskTab').classList.remove('d-none');
+        document.getElementById('kioskNavBtn').classList.add('active', 'text-white');
+      } else if (tabId === 'admin') {
+        document.getElementById('adminTab').classList.remove('d-none');
+        document.getElementById('adminNavBtn').classList.add('active', 'text-white');
+        renderAdmin();
+      } else if (tabId === 'students') {
+        document.getElementById('studentsTab').classList.remove('d-none');
+        document.getElementById('studentsNavBtn').classList.add('active', 'text-white');
+        renderStudents();
+      } else if (tabId === 'logs') {
+        document.getElementById('logsTab').classList.remove('d-none');
+        document.getElementById('logsNavBtn').classList.add('active', 'text-white');
+        renderLogs();
+      }
+    }
+
+    // Audio chime
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('soundIcon').className = soundEnabled ? 'bi bi-volume-up-fill text-primary' : 'bi bi-volume-mute-fill text-muted';
+    }
+
+    function playBeep(type) {
+      if (!soundEnabled) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        if (type === 'success') {
+          osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+          osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.12, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.3);
+        } else {
+          osc.frequency.setValueAtTime(220, ctx.currentTime);
+          gain.gain.setValueAtTime(0.1, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.2);
+        }
+      } catch (e) {}
+    }
+
+    // Biometric Scan Execution
+    function scanFace() {
+      if (isScanning) return;
+      isScanning = true;
+
+      document.getElementById('idleState').classList.add('d-none');
+      document.getElementById('resultBox').classList.add('d-none');
+      document.getElementById('scanningState').classList.remove('d-none');
+      cameraBox.classList.add('scanning');
+      faceGuide.classList.add('active');
+
+      setTimeout(() => {
+        cameraBox.classList.remove('scanning');
+        faceGuide.classList.remove('active');
+        document.getElementById('scanningState').classList.add('d-none');
+
+        // Pick enrolled student (cycle or match Lena)
+        const matched = students[0];
+        const timeStr = new Date().toLocaleTimeString();
+        const sessionName = document.getElementById('sessionSelect').selectedOptions[0].text;
+
+        // Check already marked
+        const already = attendanceLogs.find(l => l.regNo === matched.regNo && l.session === sessionName);
+
+        const resultBox = document.getElementById('resultBox');
+        resultBox.classList.remove('d-none');
+
+        if (already) {
+          resultBox.className = 'result-box text-start p-3 rounded-3 bg-primary-subtle border border-primary-subtle text-primary';
+          document.getElementById('resultIcon').innerHTML = '<i class="bi bi-info-circle-fill text-primary"></i>';
+          document.getElementById('resultTitle').innerText = 'Already Marked Today';
+          document.getElementById('resultSubtitle').innerText = sessionName;
+          document.getElementById('resMessage').innerText = `Attendance was already recorded for ${matched.name} at ${already.time}.`;
+          playBeep('info');
+        } else {
+          resultBox.className = 'result-box text-start p-3 rounded-3 bg-success-subtle border border-success-subtle text-success';
+          document.getElementById('resultIcon').innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+          document.getElementById('resultTitle').innerText = 'Attendance Verified!';
+          document.getElementById('resultSubtitle').innerText = sessionName;
+          document.getElementById('resMessage').innerText = `Verification confidence 98.7%. Check-in logged.`;
+          
+          attendanceLogs.unshift({
+            id: Date.now(),
+            studentId: matched.id,
+            regNo: matched.regNo,
+            name: matched.name,
+            session: sessionName,
+            time: timeStr,
+            status: 'Present',
+            conf: '98.7%',
+            method: 'Face Recognition'
+          });
+          localStorage.setItem('bio_logs', JSON.stringify(attendanceLogs));
+          playBeep('success');
+        }
+
+        document.getElementById('resAvatar').innerText = matched.name[0];
+        document.getElementById('resName').innerText = matched.name;
+        document.getElementById('resRegNo').innerText = matched.regNo;
+        document.getElementById('resDept').innerText = matched.dept;
+        document.getElementById('resClass').innerText = matched.classYear;
+        document.getElementById('resTime').innerText = timeStr;
+        document.getElementById('resConf').innerText = '98.7%';
+
+        isScanning = false;
+      }, 1500);
+    }
+
+    // Auto-scan
+    document.getElementById('autoScanToggle').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        autoScanInterval = setInterval(() => { if (!isScanning) scanFace(); }, 4000);
+      } else {
+        clearInterval(autoScanInterval);
+      }
+    });
+
+    // Render Admin Stats
+    function renderAdmin() {
+      const total = students.length;
+      const present = attendanceLogs.filter(l => l.status === 'Present').length;
+      const absent = Math.max(0, total - present);
+      const rate = total > 0 ? (present / total * 100).toFixed(1) : 0;
+
+      document.getElementById('statTotal').innerText = total;
+      document.getElementById('statPresent').innerText = present;
+      document.getElementById('statAbsent').innerText = absent;
+      document.getElementById('statRate').innerText = `${rate}%`;
+      document.getElementById('statRateBar').style.width = `${rate}%`;
+
+      renderCharts(present, absent);
+    }
+
+    let trendChartInstance = null;
+    let deptChartInstance = null;
+
+    function renderCharts(present, absent) {
+      if (trendChartInstance) trendChartInstance.destroy();
+      if (deptChartInstance) deptChartInstance.destroy();
+
+      const tCtx = document.getElementById('trendChart').getContext('2d');
+      trendChartInstance = new Chart(tCtx, {
+        type: 'line',
+        data: {
+          labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Today'],
+          datasets: [{
+            label: 'Present Students',
+            data: [1, 2, 2, 3, 2, present],
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            fill: true,
+            tension: 0.35,
+            borderWidth: 2
+          }]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+      });
+
+      const dCtx = document.getElementById('deptChart').getContext('2d');
+      deptChartInstance = new Chart(dCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Computer Science', 'Electronics'],
+          datasets: [{
+            data: [2, 1],
+            backgroundColor: ['#2563eb', '#10b981'],
+            borderWidth: 2
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    // Render Students Table
+    function renderStudents() {
+      const tbody = document.getElementById('studentsTableBody');
+      tbody.innerHTML = '';
+      students.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold">
+                ${s.name[0]}
+              </div>
+              <span class="fw-semibold">${s.name}</span>
+            </div>
+          </td>
+          <td><code>${s.regNo}</code></td>
+          <td>${s.dept}</td>
+          <td>${s.classYear}</td>
+          <td><span class="badge bg-secondary-subtle text-secondary border">${s.samples} Encodings</span></td>
+          <td><span class="badge badge-soft-success">Active</span></td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent(${s.id})"><i class="bi bi-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Render Logs Table
+    function renderLogs() {
+      const tbody = document.getElementById('logsTableBody');
+      tbody.innerHTML = '';
+      attendanceLogs.forEach(l => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${l.name}</strong></td>
+          <td><code>${l.regNo}</code></td>
+          <td>${l.session}</td>
+          <td class="font-monospace text-primary">${l.time}</td>
+          <td><span class="badge badge-soft-success">${l.status}</span></td>
+          <td class="fw-bold text-success">${l.conf}</td>
+          <td><small class="text-muted">${l.method}</small></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openAddStudentModal() {
+      new bootstrap.Modal(document.getElementById('addStudentModal')).show();
+    }
+
+    function saveNewStudent() {
+      const reg = document.getElementById('newRegNo').value.trim().toUpperCase();
+      const name = document.getElementById('newName').value.trim();
+      const dept = document.getElementById('newDept').value.trim();
+      const cls = document.getElementById('newClass').value.trim();
+
+      if (!reg || !name) {
+        alert("Please enter Register Number and Name.");
+        return;
+      }
+
+      students.push({
+        id: Date.now(),
+        regNo: reg,
+        name: name,
+        dept: dept,
+        classYear: cls,
+        samples: 3,
+        status: 'Active'
+      });
+      localStorage.setItem('bio_students', JSON.stringify(students));
+      bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
+      renderStudents();
+      renderAdmin();
+      alert(`Student ${name} registered successfully!`);
+    }
+
+    function deleteStudent(id) {
+      if (!confirm("Are you sure you want to remove this student?")) return;
+      students = students.filter(s => s.id !== id);
+      localStorage.setItem('bio_students', JSON.stringify(students));
+      renderStudents();
+      renderAdmin();
+    }
+
+    function exportCSV() {
+      let csv = "Register Number,Name,Session,Time,Status,Confidence,Method\n";
+      attendanceLogs.forEach(l => {
+        csv += `"${l.regNo}","${l.name}","${l.session}","${l.time}","${l.status}","${l.conf}","${l.method}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `attendance_report_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+    }
+  </script>
+</body>
+</html>
