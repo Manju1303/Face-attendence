@@ -13,8 +13,8 @@ MODELS = {
     'face_detection_yunet_2023mar.onnx': 'https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx',
     'face_recognition_sface_2021dec.onnx': 'https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx',
     'emotion_ferplus.onnx': 'https://github.com/onnx/models/raw/main/validated/vision/body_analysis/emotion_ferplus/model/emotion-ferplus-8.onnx',
-    'haarcascade_frontalface_default.xml': 'https://raw.githubusercontent.com/mrpk7431-dev/Real-time-facial-emotion-recognition/main/haarcascade_frontalface_default.xml',
-    'deploy.prototxt': 'https://raw.githubusercontent.com/mrpk7431-dev/Real-time-facial-emotion-recognition/main/deploy.prototxt',
+    'haarcascade_frontalface_default.xml': 'https://raw.githubusercontent.com/opencv/opencv/master/data/haarcascades/haarcascade_frontalface_default.xml',
+    'deploy.prototxt': 'https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt',
     'res10_300x300_ssd_iter_140000.caffemodel': 'https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel'
 }
 

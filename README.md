@@ -1,6 +1,6 @@
 # Biometric Attendance Management System Using Face Recognition (BioAttendAI)
 
-A production-ready, full-stack biometric attendance management system built with Python, Flask, OpenCV Deep Neural Networks (YuNet + SFace), and real-time facial emotion analytics inspired by the [mrpk7431-dev/Real-time-facial-emotion-recognition](https://github.com/mrpk7431-dev/Real-time-facial-emotion-recognition) repository.
+A production-ready, full-stack biometric attendance management system built with Python, Flask, OpenCV Deep Neural Networks (YuNet + SFace), and real-time facial emotion analytics.
 
 ---
 
@@ -94,10 +94,10 @@ face attendence/
 
 ---
 
-## 🧠 Models and Integration from `mrpk7431-dev/Real-time-facial-emotion-recognition`
+## 🧠 Computer Vision & Deep Learning Models Architecture
 
-The project incorporates the computer vision architecture and weights from the referenced repository:
-1. **`haarcascade_frontalface_default.xml`:** Downloaded directly from the repository for classical Haar Cascade face detection.
+The project incorporates an optimized computer vision architecture and deep neural network models:
+1. **`haarcascade_frontalface_default.xml`:** Classical Haar Cascade face detector for lightweight legacy CPU environments.
 2. **`deploy.prototxt` & `res10_300x300_ssd_iter_140000.caffemodel`:** Caffe Deep Neural Network SSD face detector for resilient detection under variable poses.
 3. **FER2013-derived Emotion Classifier (`emotion_ferplus.onnx`):** Implements facial emotion tracking during attendance check-in (logging emotions like *Happy*, *Neutral*, *Attentive*, etc.).
 4. **OpenCV YuNet + SFace (128D Embedding):** State-of-the-art L2-normalized feature representation ensuring high throughput and sub-second matching across large student cohorts on standard CPU hardware.
