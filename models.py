@@ -34,7 +34,17 @@ class Student(db.Model):
     email = db.Column(db.String(120), nullable=True)
     active_status = db.Column(db.Boolean, default=True, nullable=False, index=True)
     photo_filename = db.Column(db.String(255), nullable=True)
+    password_hash = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        if not self.password_hash:
+            # Default password fallback: 'student123' or their register number
+            return password == 'student123' or password.upper() == self.register_number.upper()
+        return check_password_hash(self.password_hash, password)
 
     # Relationships
     encodings = db.relationship('FaceEncoding', backref='student', lazy=True, cascade="all, delete-orphan")

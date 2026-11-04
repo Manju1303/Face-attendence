@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - BioAttendAI{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5 col-xl-4">
+      
+      <div class="card shadow-sm border-0 rounded-4 overflow-hidden bg-white">
+        
+        <!-- Header -->
+        <div class="card-header bg-white text-center pt-4 pb-2 border-0">
+          <div class="brand-icon-wrapper mx-auto mb-2" style="width: 44px; height: 44px;">
+            <i class="bi bi-person-bounding-box fs-4"></i>
+          </div>
+          <h4 class="fw-bold mb-1 text-dark">Welcome to BioAttend</h4>
+          <p class="text-muted small mb-3">Sign in to your account</p>
+
+          <!-- Segmented Role Selector -->
+          <div class="btn-group w-100 p-1 bg-light rounded-3 border" role="group">
+            <button type="button" class="btn btn-sm rounded-2 fw-semibold {% if active_role != 'admin' %}btn-primary text-white shadow-sm{% else %}btn-light text-muted border-0{% endif %}" id="studentTabBtn" onclick="setLoginRole('student')">
+              <i class="bi bi-mortarboard me-1"></i> Student
+            </button>
+            <button type="button" class="btn btn-sm rounded-2 fw-semibold {% if active_role == 'admin' %}btn-primary text-white shadow-sm{% else %}btn-light text-muted border-0{% endif %}" id="adminTabBtn" onclick="setLoginRole('admin')">
+              <i class="bi bi-shield-lock me-1"></i> Administrator
+            </button>
+          </div>
+        </div>
+        
+        <div class="card-body p-4 pt-2">
+          
+          <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}" id="loginForm">
+            <input type="hidden" name="login_role" id="loginRoleInput" value="{{ active_role }}">
+
+            <!-- ================= STUDENT FORM FIELDS ================= -->
+            <div id="studentFields" class="{% if active_role == 'admin' %}d-none{% endif %}">
+              <div class="mb-3">
+                <label for="student_reg_no" class="form-label small fw-semibold text-muted text-uppercase">Student ID / Register No</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-end-0"><i class="bi bi-card-heading text-muted"></i></span>
+                  <input type="text" class="form-control text-uppercase border-start-0" id="student_reg_no" name="student_reg_no" placeholder="e.g. CS2026001" value="CS2026001">
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="student_password" class="form-label small fw-semibold text-muted text-uppercase">Password</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
+                  <input type="password" class="form-control border-start-0 border-end-0" id="student_password" name="student_password" placeholder="••••••••" value="student123">
+                  <button type="button" class="btn btn-light border border-start-0" onclick="togglePassword('student_password', 'studentEye')">
+                    <i class="bi bi-eye text-muted" id="studentEye"></i>
+                  </button>
+                </div>
+                <div class="form-text small">Default: <code>student123</code> or your Register Number</div>
+              </div>
+            </div>
+
+            <!-- ================= ADMIN FORM FIELDS ================= -->
+            <div id="adminFields" class="{% if active_role != 'admin' %}d-none{% endif %}">
+              <div class="mb-3">
+                <label for="admin_username" class="form-label small fw-semibold text-muted text-uppercase">Admin Username</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
+                  <input type="text" class="form-control border-start-0" id="admin_username" name="admin_username" placeholder="e.g. admin" value="admin">
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="admin_password" class="form-label small fw-semibold text-muted text-uppercase">Admin Password</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
+                  <input type="password" class="form-control border-start-0 border-end-0" id="admin_password" name="admin_password" placeholder="••••••••" value="admin123">
+                  <button type="button" class="btn btn-light border border-start-0" onclick="togglePassword('admin_password', 'adminEye')">
+                    <i class="bi bi-eye text-muted" id="adminEye"></i>
+                  </button>
+                </div>
+                <div class="form-text small">Default: <code>admin</code> / <code>admin123</code></div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold rounded-3 mt-3 shadow-sm" id="submitBtn">
+              Sign In
+            </button>
+          </form>
+
+        </div>
+
+        <div class="card-footer bg-light text-center py-3 border-top">
+          <a href="{{ url_for('attendance.scan_page') }}" class="text-decoration-none small text-muted">
+            <i class="bi bi-camera me-1"></i> Open Attendance Scanner Kiosk
+          </a>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function setLoginRole(role) {
+    document.getElementById('loginRoleInput').value = role;
+    const studentBtn = document.getElementById('studentTabBtn');
+    const adminBtn = document.getElementById('adminTabBtn');
+    const studentFields = document.getElementById('studentFields');
+    const adminFields = document.getElementById('adminFields');
+
+    if (role === 'admin') {
+      adminBtn.className = 'btn btn-sm rounded-2 fw-semibold btn-primary text-white shadow-sm';
+      studentBtn.className = 'btn btn-sm rounded-2 fw-semibold btn-light text-muted border-0';
+      adminFields.classList.remove('d-none');
+      studentFields.classList.add('d-none');
+    } else {
+      studentBtn.className = 'btn btn-sm rounded-2 fw-semibold btn-primary text-white shadow-sm';
+      adminBtn.className = 'btn btn-sm rounded-2 fw-semibold btn-light text-muted border-0';
+      studentFields.classList.remove('d-none');
+      adminFields.classList.add('d-none');
+    }
+  }
+
+  function togglePassword(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.className = 'bi bi-eye-slash text-primary';
+    } else {
+      input.type = 'password';
+      icon.className = 'bi bi-eye text-muted';
+    }
+  }
+</script>
+{% endblock %}

@@ -3,7 +3,7 @@ from flask import Flask, send_from_directory, render_template
 from config import Config
 from models import db, Admin, ClassSession, Student
 from datetime import date, time
-from routes import auth_bp, admin_bp, attendance_bp
+from routes import auth_bp, admin_bp, attendance_bp, student_bp
 
 def create_app():
     app = Flask(__name__)
@@ -21,6 +21,7 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(attendance_bp)
+    app.register_blueprint(student_bp)
 
     # Serve student uploaded photos securely
     @app.route('/uploads/students/<filename>')
