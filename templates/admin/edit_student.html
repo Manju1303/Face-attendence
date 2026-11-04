@@ -14,6 +14,23 @@
           </a>
         </div>
         <div class="card-body p-4">
+          <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-4 border">
+            {% if student.photo_filename %}
+              <img src="{{ url_for('student_photo', filename=student.photo_filename) }}" class="student-avatar" style="width: 54px; height: 54px;" alt="{{ student.full_name }}">
+            {% else %}
+              <div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold" style="width: 54px; height: 54px; font-size: 1.3rem;">
+                {{ student.full_name[0] }}
+              </div>
+            {% endif %}
+            <div class="flex-grow-1">
+              <h6 class="fw-bold mb-0">{{ student.full_name }}</h6>
+              <div class="small text-muted"><code>{{ student.register_number }}</code> &bull; {{ student.encodings|length }} Face Sample(s)</div>
+            </div>
+            <a href="{{ url_for('admin.re_enroll_student', student_id=student.id) }}" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-camera me-1"></i> Update Face / Photo
+            </a>
+          </div>
+
           <form method="POST">
             <div class="mb-3">
               <label for="register_number" class="form-label fw-semibold">Student ID / Register Number</label>
