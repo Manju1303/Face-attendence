@@ -136,6 +136,7 @@ body {
   position: relative;
   width: 100%;
   max-width: 640px;
+  aspect-ratio: 4 / 3;
   margin: 0 auto;
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -146,7 +147,7 @@ body {
 
 .camera-feed {
   width: 100%;
-  height: 480px;
+  height: 100%;
   object-fit: cover;
   transform: scaleX(-1); /* mirror */
   display: block;
@@ -166,8 +167,8 @@ body {
 }
 
 .face-guide {
-  width: 250px;
-  height: 300px;
+  width: clamp(180px, 55vw, 250px);
+  height: clamp(220px, 70vw, 300px);
   border: 2px dashed rgba(255, 255, 255, 0.65);
   border-radius: 50% 50% 46% 46%;
   position: relative;

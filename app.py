@@ -5,9 +5,11 @@ from models import db, Admin, ClassSession, Student
 from datetime import date, time
 from routes import auth_bp, admin_bp, attendance_bp, student_bp
 
-def create_app():
+def create_app(config_override=None):
     app = Flask(__name__)
     app.config.from_object(Config)
+    if config_override:
+        app.config.update(config_override)
 
     # Ensure required directories exist
     os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
