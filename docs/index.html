@@ -86,7 +86,7 @@
       box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08);
     }
 
-    /* Camera Viewfinder - Pro Alignment Mobile & Desktop */
+    /* Camera Viewfinder - Pixel Perfect Mobile & Desktop */
     .camera-container {
       position: relative;
       width: 100%;
@@ -103,9 +103,12 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transform: scaleX(-1);
       display: block;
     }
+    .camera-feed.mirrored {
+      transform: scaleX(-1);
+    }
+
     .scan-overlay {
       position: absolute;
       top: 0;
@@ -118,7 +121,7 @@
       justify-content: center;
     }
 
-    /* Modern Biometric Face Oval Guide (No floating disconnected brackets) */
+    /* Centered Biometric Face Oval Guide (No floating disconnected brackets) */
     .face-guide {
       width: clamp(180px, 55vw, 240px);
       height: clamp(220px, 70vw, 290px);
@@ -153,24 +156,24 @@
       100% { top: 12%; }
     }
 
-    /* Fallback overlay inside camera when access is denied/unavailable */
+    /* Camera Permission Overlay */
     .camera-fallback-overlay {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(15, 23, 42, 0.94);
+      background: rgba(15, 23, 42, 0.95);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
       text-align: center;
-      z-index: 5;
+      z-index: 10;
     }
 
     /* Avatars & Badges */
     .student-avatar {
-      width: 42px;
-      height: 42px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       object-fit: cover;
       border: 2px solid #e2e8f0;
@@ -213,7 +216,7 @@
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     }
 
-    /* Verification Result Card Styling */
+    /* Result Box Styling */
     .result-box {
       min-height: auto;
       overflow: visible;
@@ -234,7 +237,7 @@
 </head>
 <body>
 
-  <!-- Clean Navigation Bar (No unwanted labels) -->
+  <!-- Clean Navigation Bar (No Unwanted Labels) -->
   <nav class="navbar navbar-expand-lg navbar-dark navbar-custom py-2 shadow-sm sticky-top">
     <div class="container-fluid px-3 px-lg-4">
       
@@ -340,7 +343,7 @@
                   <div class="card-header bg-dark text-white py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <div class="d-flex align-items-center gap-2 small">
                       <i class="bi bi-camera-video-fill text-warning" id="cameraDot"></i>
-                      <span id="cameraStatus">Initializing Camera...</span>
+                      <span id="cameraStatus">Connecting Camera...</span>
                     </div>
 
                     <div class="d-flex align-items-center gap-2">
@@ -355,27 +358,33 @@
 
                   <div class="card-body p-0 bg-black position-relative">
                     <div class="camera-container" id="cameraBox">
-                      <video id="webcam" class="camera-feed" autoplay playsinline muted></video>
+                      <!-- Live Video Element with cross-platform mobile attributes -->
+                      <video id="webcam" class="camera-feed mirrored" autoplay playsinline webkit-playsinline muted></video>
                       
-                      <!-- Face oval guide -->
+                      <!-- Face Oval Guide -->
                       <div class="scan-overlay">
                         <div class="face-guide" id="faceGuide">
                           <div class="scan-line"></div>
                         </div>
                       </div>
 
-                      <!-- Clean Fallback Card if Camera is blocked -->
+                      <!-- Camera Fallback / Permission Helper Overlay -->
                       <div id="cameraDeniedOverlay" class="camera-fallback-overlay d-none">
-                        <i class="bi bi-camera-video-off text-muted display-4 mb-2"></i>
-                        <h6 class="text-white fw-bold mb-1">Camera Access Blocked</h6>
-                        <p class="text-white-50 small mb-3 px-3">Browser camera permission was not granted or webcam is busy.</p>
+                        <i class="bi bi-camera-video-off text-warning display-4 mb-2"></i>
+                        <h5 class="text-white fw-bold mb-1" id="cameraErrorTitle">Camera Access Required</h5>
+                        <p class="text-white-50 small mb-3 px-3" id="cameraErrorMessage" style="max-width: 440px;">
+                          Please allow camera access in your browser to start the face scanner. Tap the button below to grant permission.
+                        </p>
                         <div class="d-flex flex-wrap justify-content-center gap-2">
-                          <button type="button" class="btn btn-primary btn-sm px-3" onclick="startCamera()">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Enable Camera
+                          <button type="button" class="btn btn-primary px-3 shadow-sm btn-touch" onclick="requestCameraAccess()">
+                            <i class="bi bi-camera me-1"></i> Allow Camera Access
                           </button>
-                          <button type="button" class="btn btn-outline-light btn-sm px-3" onclick="scanFace()">
+                          <button type="button" class="btn btn-outline-light px-3 btn-touch" onclick="scanFace()">
                             <i class="bi bi-person-check me-1"></i> Scan with Demo Face
                           </button>
+                        </div>
+                        <div class="mt-3 text-white-50 small" style="font-size: 0.75rem;">
+                          <i class="bi bi-shield-lock me-1"></i> On mobile: Tap the lock/info icon in address bar to enable Camera.
                         </div>
                       </div>
 
@@ -383,14 +392,18 @@
                   </div>
 
                   <div class="card-footer bg-white p-3 border-top">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                      <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                      <div class="d-flex align-items-center gap-2">
                         <div class="form-check form-switch mb-0">
                           <input class="form-check-input" type="checkbox" id="autoScanToggle">
                           <label class="form-check-label fw-semibold small text-dark" for="autoScanToggle">Auto-Scan</label>
                         </div>
-                        <button type="button" class="btn btn-sm btn-light border" id="soundBtn" onclick="toggleSound()" title="Toggle Sound Chime">
+                        <button type="button" class="btn btn-sm btn-light border py-1 px-2" id="soundBtn" onclick="toggleSound()" title="Toggle Sound Chime">
                           <i class="bi bi-volume-up-fill text-primary" id="soundIcon"></i>
+                        </button>
+                        <!-- Flip camera button for mobile devices -->
+                        <button type="button" class="btn btn-sm btn-light border py-1 px-2" onclick="flipCamera()" title="Switch Front / Rear Camera">
+                          <i class="bi bi-arrow-repeat text-dark"></i>
                         </button>
                       </div>
 
@@ -398,7 +411,7 @@
                         <button type="button" class="btn btn-primary px-4 fw-semibold shadow-sm flex-grow-1 btn-touch" id="scanBtn" onclick="scanFace()">
                           <i class="bi bi-upc-scan me-1"></i> Scan Face Now
                         </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="startCamera()" title="Restart Camera">
+                        <button type="button" class="btn btn-outline-secondary" onclick="requestCameraAccess()" title="Reconnect Camera">
                           <i class="bi bi-arrow-clockwise"></i>
                         </button>
                       </div>
@@ -408,7 +421,7 @@
                 </div>
               </div>
 
-              <!-- Right: Verification Result (Properly formatted, No Cutoffs) -->
+              <!-- Right: Verification Result (Fully Accessible, No Clipping) -->
               <div class="col-lg-5">
                 <div class="card shadow-sm border-0 rounded-4 h-100 d-flex flex-column">
                   <div class="card-header py-3 bg-white border-bottom">
@@ -434,10 +447,10 @@
                     <div id="scanningState" class="py-4 d-none">
                       <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
                       <h5 class="fw-bold text-dark">Analyzing Face...</h5>
-                      <p class="text-muted small mb-0">Computing biometric landmarks &amp; facial match</p>
+                      <p class="text-muted small mb-0">Capturing live frame &amp; verifying biometric match</p>
                     </div>
 
-                    <!-- Result Box (Fully expanded, No clipping) -->
+                    <!-- Result Box -->
                     <div id="resultBox" class="result-box d-none text-start p-3 rounded-3">
                       
                       <div class="d-flex align-items-center gap-3 mb-3">
@@ -453,8 +466,10 @@
                       <div id="studentDetailsCard" class="bg-white p-3 rounded-3 border mb-3 shadow-sm">
                         
                         <div class="d-flex align-items-center gap-3 mb-2">
-                          <div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5" id="resAvatar">
-                            L
+                          <div id="resAvatarWrapper">
+                            <div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5" id="resAvatar">
+                              L
+                            </div>
                           </div>
                           <div>
                             <h5 class="fw-bold mb-0 text-dark" id="resName">Lena Forsen</h5>
@@ -500,8 +515,8 @@
                   </div>
 
                   <div class="card-footer bg-light p-3 small text-muted d-flex justify-content-between align-items-center">
-                    <span>Status: <strong class="text-success">Active</strong></span>
-                    <span><i class="bi bi-shield-check text-success me-1"></i>Verified Kiosk</span>
+                    <span>Status: <strong class="text-success" id="cameraFooterStatus">Live Kiosk</strong></span>
+                    <span><i class="bi bi-shield-check text-success me-1"></i>Verified Session</span>
                   </div>
 
                 </div>
@@ -514,7 +529,7 @@
       </div>
 
       <!-- ============================================================= -->
-      <!-- TAB 2: UNIFIED SIGN IN (STUDENT & ADMIN IN ONE PAGE)          -->
+      <!-- TAB 2: UNIFIED SIGN IN                                        -->
       <!-- ============================================================= -->
       <div id="authTab" class="tab-view d-none">
         <div class="row justify-content-center py-2 py-md-4">
@@ -847,7 +862,7 @@
       </div>
 
       <!-- ============================================================= -->
-      <!-- TAB 7: VERIFICATION REPORT (20 TESTS PASSED)                  -->
+      <!-- TAB 7: VERIFICATION REPORT                                    -->
       <!-- ============================================================= -->
       <div id="testsTab" class="tab-view d-none">
         <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4 bg-white p-3 p-md-4 rounded-4 shadow-sm border">
@@ -973,7 +988,7 @@
     </div>
   </div>
 
-  <!-- Clean Footer (No unwanted tech labels) -->
+  <!-- Clean Footer -->
   <footer class="py-3 text-center bg-white border-top mt-auto">
     <div class="container d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
       <div>
@@ -1007,13 +1022,18 @@
     let soundEnabled = true;
     let isScanning = false;
     let autoScanInterval = null;
+    let activeMediaStream = null;
+    let currentFacingMode = 'user'; // 'user' (front) or 'environment' (back)
 
     const video = document.getElementById('webcam');
     const cameraDot = document.getElementById('cameraDot');
     const cameraStatus = document.getElementById('cameraStatus');
+    const cameraFooterStatus = document.getElementById('cameraFooterStatus');
     const faceGuide = document.getElementById('faceGuide');
     const cameraBox = document.getElementById('cameraBox');
     const cameraDeniedOverlay = document.getElementById('cameraDeniedOverlay');
+    const cameraErrorTitle = document.getElementById('cameraErrorTitle');
+    const cameraErrorMessage = document.getElementById('cameraErrorMessage');
 
     // Live Clock
     setInterval(() => {
@@ -1022,27 +1042,153 @@
       document.getElementById('liveDate').innerText = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
     }, 1000);
 
-    // Camera Init with Graceful Fallback
-    async function startCamera() {
+    // =========================================================================
+    // ROBUST CROSS-PLATFORM CAMERA ENGINE (MOBILE & DESKTOP)
+    // =========================================================================
+    async function requestCameraAccess() {
+      // 1. Check if mediaDevices API is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showCameraError(
+          "Camera API Unsupported",
+          "Your browser does not support webcam access or is not running in a secure HTTPS environment."
+        );
+        return;
+      }
+
+      // 2. Stop existing active tracks to avoid device busy locks
+      if (activeMediaStream) {
+        try {
+          activeMediaStream.getTracks().forEach(t => t.stop());
+        } catch (e) {}
+        activeMediaStream = null;
+      }
+
+      cameraDeniedOverlay.classList.add('d-none');
+      cameraDot.className = "bi bi-camera-video-fill text-warning";
+      cameraStatus.innerText = "Connecting Camera...";
+
+      // Mirror video only for front-facing camera
+      if (currentFacingMode === 'user') {
+        video.classList.add('mirrored');
+      } else {
+        video.classList.remove('mirrored');
+      }
+
+      // Progressive constraint fallback list
+      const constraintCandidates = [
+        // Candidate 1: Preferred facing mode + HD resolution
+        {
+          video: {
+            facingMode: { ideal: currentFacingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        },
+        // Candidate 2: Preferred facing mode without exact resolution
+        {
+          video: {
+            facingMode: { ideal: currentFacingMode }
+          },
+          audio: false
+        },
+        // Candidate 3: Any available video device
+        {
+          video: true,
+          audio: false
+        }
+      ];
+
+      let stream = null;
+      let lastError = null;
+
+      for (const constraints of constraintCandidates) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          if (stream) break;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      if (!stream) {
+        handleCameraError(lastError);
+        return;
+      }
+
+      // Stream successfully acquired
+      activeMediaStream = stream;
+      video.srcObject = stream;
+
       try {
-        cameraDeniedOverlay.classList.add('d-none');
-        cameraDot.className = "bi bi-camera-video-fill text-warning";
-        cameraStatus.innerText = "Connecting Camera...";
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
-        });
-        video.srcObject = stream;
-        video.onloadedmetadata = () => {
-          cameraDot.className = "bi bi-camera-video-fill text-success";
-          cameraStatus.innerText = "Camera Active";
+        await video.play();
+        cameraDot.className = "bi bi-camera-video-fill text-success";
+        cameraStatus.innerText = currentFacingMode === 'user' ? "Front Camera Active" : "Rear Camera Active";
+        cameraFooterStatus.innerText = "Camera Active";
+        cameraFooterStatus.className = "text-success";
+      } catch (playErr) {
+        // Fallback for browsers that require user gesture for play
+        video.onloadedmetadata = async () => {
+          try {
+            await video.play();
+            cameraDot.className = "bi bi-camera-video-fill text-success";
+            cameraStatus.innerText = "Camera Active";
+          } catch (e) {
+            console.warn("Autoplay blocked, waiting for tap:", e);
+          }
         };
-      } catch (e) {
-        cameraDot.className = "bi bi-camera-video-off-fill text-danger";
-        cameraStatus.innerText = "Camera Unavailable";
-        cameraDeniedOverlay.classList.remove('d-none');
       }
     }
-    startCamera();
+
+    function handleCameraError(err) {
+      console.error("Camera access failed:", err);
+      cameraDot.className = "bi bi-camera-video-off-fill text-danger";
+      cameraStatus.innerText = "Camera Blocked";
+      cameraFooterStatus.innerText = "Camera Blocked";
+      cameraFooterStatus.className = "text-danger";
+
+      if (!err) {
+        showCameraError("Camera Unavailable", "Unable to establish camera connection. Please check device permissions.");
+        return;
+      }
+
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        showCameraError(
+          "Camera Permission Denied",
+          "Your browser blocked camera access. Please tap the lock/info icon in your browser address bar and change Camera to 'Allow', then retry."
+        );
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        showCameraError(
+          "No Camera Detected",
+          "No camera hardware was found on this device. You can test face recognition using the demo mode below."
+        );
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        showCameraError(
+          "Camera Already in Use",
+          "Another app (like Zoom, Teams, or another browser tab) is currently using the camera. Please close it and retry."
+        );
+      } else {
+        showCameraError(
+          "Camera Access Error",
+          err.message || "An unexpected error occurred while accessing the camera."
+        );
+      }
+    }
+
+    function showCameraError(title, message) {
+      cameraErrorTitle.innerText = title;
+      cameraErrorMessage.innerText = message;
+      cameraDeniedOverlay.classList.remove('d-none');
+    }
+
+    // Flip Camera (Front / Rear for Mobile)
+    async function flipCamera() {
+      currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+      await requestCameraAccess();
+    }
+
+    // Auto-start on page load
+    requestCameraAccess();
 
     // Tab switcher with auto mobile collapse
     function switchTab(tabId) {
@@ -1050,7 +1196,7 @@
       document.querySelectorAll('.navbar-nav .nav-link').forEach(el => el.classList.remove('active', 'text-white'));
       
       const navCollapse = document.getElementById('navContent');
-      if (navCollapse.classList.contains('show')) {
+      if (navCollapse && navCollapse.classList.contains('show')) {
         const bsCollapse = bootstrap.Collapse.getInstance(navCollapse) || new bootstrap.Collapse(navCollapse);
         bsCollapse.hide();
       }
@@ -1161,7 +1307,28 @@
       }
     }
 
-    // Biometric Face Scanner Execution (Always works, even if real camera blocked)
+    // Live Snapshot Capture
+    function captureLiveFrame() {
+      if (video.videoWidth && video.videoHeight) {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.min(video.videoWidth, 640);
+          canvas.height = Math.min(video.videoHeight, 480);
+          const ctx = canvas.getContext('2d');
+          if (currentFacingMode === 'user') {
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+          }
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          return canvas.toDataURL('image/jpeg', 0.85);
+        } catch (e) {
+          console.warn("Canvas capture exception:", e);
+        }
+      }
+      return null;
+    }
+
+    // Biometric Face Scanner Execution
     function scanFace() {
       if (isScanning) return;
       isScanning = true;
@@ -1171,6 +1338,8 @@
       document.getElementById('scanningState').classList.remove('d-none');
       cameraBox.classList.add('scanning');
       faceGuide.classList.add('active');
+
+      const capturedPhoto = captureLiveFrame();
 
       setTimeout(() => {
         cameraBox.classList.remove('scanning');
@@ -1214,7 +1383,14 @@
           playBeep('success');
         }
 
-        document.getElementById('resAvatar').innerText = matched.name[0];
+        // Show captured photo in avatar if available
+        const avatarWrapper = document.getElementById('resAvatarWrapper');
+        if (capturedPhoto) {
+          avatarWrapper.innerHTML = `<img src="${capturedPhoto}" class="student-avatar shadow-sm" alt="Captured Photo">`;
+        } else {
+          avatarWrapper.innerHTML = `<div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5">${matched.name[0]}</div>`;
+        }
+
         document.getElementById('resName').innerText = matched.name;
         document.getElementById('resRegNo').innerText = matched.regNo;
         document.getElementById('resDept').innerText = matched.dept;
