@@ -1481,7 +1481,56 @@
 
     // -------------------------------------------------------------
     // Biometric Image Feature Extraction & Similarity Comparison
+    // Dual-Orientation (Normal + Mirrored) & Multi-Scale Biometric Engine
     // -------------------------------------------------------------
+    const studentFeatureCache = new Map();
+
+    function extractVariantFeatures(ctx, sx, sy, sw, sh, size, isFlipped) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = size;
+      tempCanvas.height = size;
+      const tCtx = tempCanvas.getContext('2d');
+      if (isFlipped) {
+        tCtx.translate(size, 0);
+        tCtx.scale(-1, 1);
+      }
+      tCtx.drawImage(ctx.canvas, sx, sy, sw, sh, 0, 0, size, size);
+      const imgData = tCtx.getImageData(0, 0, size, size).data;
+
+      const grays = new Float32Array(size * size);
+      let sum = 0, rSum = 0, gSum = 0, bSum = 0;
+      for (let i = 0; i < imgData.length; i += 4) {
+        const r = imgData[i], g = imgData[i + 1], b = imgData[i + 2];
+        rSum += r; gSum += g; bSum += b;
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        grays[i / 4] = lum;
+        sum += lum;
+      }
+      const avg = sum / (size * size);
+      let varSum = 0;
+      for (let i = 0; i < grays.length; i++) {
+        const diff = grays[i] - avg;
+        varSum += diff * diff;
+      }
+      const stdDev = Math.sqrt(varSum / grays.length);
+
+      const dHash = [];
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size - 1; x++) {
+          dHash.push(grays[y * size + x] > grays[y * size + (x + 1)] ? 1 : 0);
+        }
+      }
+      for (let y = 0; y < size - 1; y++) {
+        for (let x = 0; x < size; x++) {
+          dHash.push(grays[y * size + x] > grays[(y + 1) * size + x] ? 1 : 0);
+        }
+      }
+
+      const totalPixels = size * size;
+      const colorVector = [rSum / (totalPixels * 255), gSum / (totalPixels * 255), bSum / (totalPixels * 255)];
+      return { grays, avg, stdDev, dHash, colorVector };
+    }
+
     function extractFaceFeatures(imageSource) {
       return new Promise((resolve) => {
         const img = new Image();
@@ -1489,59 +1538,28 @@
         img.onload = () => {
           try {
             const size = 32;
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
+            const srcCanvas = document.createElement('canvas');
+            srcCanvas.width = img.width;
+            srcCanvas.height = img.height;
+            const srcCtx = srcCanvas.getContext('2d');
+            srcCtx.drawImage(img, 0, 0);
 
-            // Crop central 75% width & 75% height to focus on face anatomy
-            const sx = img.width * 0.125;
-            const sy = img.height * 0.125;
-            const sWidth = img.width * 0.75;
-            const sHeight = img.height * 0.75;
-            ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, size, size);
+            // 1. Full frame variants (Normal & Flipped)
+            const fullNorm = extractVariantFeatures(srcCtx, 0, 0, img.width, img.height, size, false);
+            const fullFlip = extractVariantFeatures(srcCtx, 0, 0, img.width, img.height, size, true);
 
-            const imgData = ctx.getImageData(0, 0, size, size).data;
-            const grays = new Float32Array(size * size);
-            let sum = 0;
-            let rSum = 0, gSum = 0, bSum = 0;
-            for (let i = 0; i < imgData.length; i += 4) {
-              const r = imgData[i];
-              const g = imgData[i + 1];
-              const b = imgData[i + 2];
-              rSum += r; gSum += g; bSum += b;
-              const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-              grays[i / 4] = lum;
-              sum += lum;
-            }
-            const avg = sum / (size * size);
+            // 2. Centered face crop variants (focusing on face anatomy)
+            const cx = img.width * 0.125;
+            const cy = img.height * 0.10;
+            const cw = img.width * 0.75;
+            const ch = img.height * 0.78;
+            const cropNorm = extractVariantFeatures(srcCtx, cx, cy, cw, ch, size, false);
+            const cropFlip = extractVariantFeatures(srcCtx, cx, cy, cw, ch, size, true);
 
-            let varianceSum = 0;
-            for (let i = 0; i < grays.length; i++) {
-              const diff = grays[i] - avg;
-              varianceSum += diff * diff;
-            }
-            const stdDev = Math.sqrt(varianceSum / grays.length);
-
-            // Compute Horizontal & Vertical Difference Hash (2D dHash)
-            const dHash = [];
-            // Horizontal gradient
-            for (let y = 0; y < size; y++) {
-              for (let x = 0; x < size - 1; x++) {
-                dHash.push(grays[y * size + x] > grays[y * size + (x + 1)] ? 1 : 0);
-              }
-            }
-            // Vertical gradient
-            for (let y = 0; y < size - 1; y++) {
-              for (let x = 0; x < size; x++) {
-                dHash.push(grays[y * size + x] > grays[(y + 1) * size + x] ? 1 : 0);
-              }
-            }
-
-            const totalPixels = size * size;
-            const colorVector = [rSum / (totalPixels * 255), gSum / (totalPixels * 255), bSum / (totalPixels * 255)];
-
-            resolve({ grays, avg, stdDev, dHash, colorVector });
+            resolve({
+              stdDev: Math.max(fullNorm.stdDev, cropNorm.stdDev),
+              variants: [fullNorm, fullFlip, cropNorm, cropFlip]
+            });
           } catch (e) {
             console.warn("Face feature extraction error:", e);
             resolve(null);
@@ -1552,39 +1570,57 @@
       });
     }
 
+    async function getStudentBiometrics(student) {
+      if (!student || !student.photo) return null;
+      if (studentFeatureCache.has(student.id)) {
+        return studentFeatureCache.get(student.id);
+      }
+      const feat = await extractFaceFeatures(student.photo);
+      if (feat) {
+        studentFeatureCache.set(student.id, feat);
+      }
+      return feat;
+    }
+
     function computeBiometricSimilarity(featA, featB) {
-      if (!featA || !featB) return 0.0;
+      if (!featA || !featB || !featA.variants || !featB.variants) return 0.0;
       if (featA.stdDev < 10 || featB.stdDev < 10) return 0.05;
 
-      // 1. Difference Hash Structural Similarity (Horizontal + Vertical Gradients)
-      let hashMatches = 0;
-      const hashLen = Math.min(featA.dHash.length, featB.dHash.length);
-      for (let i = 0; i < hashLen; i++) {
-        if (featA.dHash[i] === featB.dHash[i]) hashMatches++;
-      }
-      const hashSim = hashMatches / hashLen;
+      let maxSim = 0.0;
+      for (const vA of featA.variants) {
+        for (const vB of featB.variants) {
+          // 1. Difference Hash Structural Similarity
+          let matches = 0;
+          const len = Math.min(vA.dHash.length, vB.dHash.length);
+          for (let i = 0; i < len; i++) {
+            if (vA.dHash[i] === vB.dHash[i]) matches++;
+          }
+          const hashSim = matches / len;
 
-      // 2. Grayscale Normalized Pearson Correlation
-      let dot = 0, normA = 0, normB = 0;
-      for (let i = 0; i < featA.grays.length; i++) {
-        const da = featA.grays[i] - featA.avg;
-        const db = featB.grays[i] - featB.avg;
-        dot += da * db;
-        normA += da * da;
-        normB += db * db;
-      }
-      const denom = Math.sqrt(normA * normB);
-      const corr = denom > 0 ? Math.max(0, dot / denom) : 0;
+          // 2. Grayscale Normalized Pearson Correlation
+          let dot = 0, normA = 0, normB = 0;
+          for (let i = 0; i < vA.grays.length; i++) {
+            const da = vA.grays[i] - vA.avg;
+            const db = vB.grays[i] - vB.avg;
+            dot += da * db;
+            normA += da * da;
+            normB += db * db;
+          }
+          const denom = Math.sqrt(normA * normB);
+          const corr = denom > 0 ? Math.max(0, dot / denom) : 0;
 
-      // 3. Color Vector Similarity
-      let colorDiff = 0;
-      for (let i = 0; i < 3; i++) {
-        colorDiff += Math.abs(featA.colorVector[i] - featB.colorVector[i]);
-      }
-      const colorSim = Math.max(0, 1 - (colorDiff / 3));
+          // 3. Color Vector Similarity
+          let colDiff = 0;
+          for (let i = 0; i < 3; i++) {
+            colDiff += Math.abs(vA.colorVector[i] - vB.colorVector[i]);
+          }
+          const colorSim = Math.max(0, 1 - (colDiff / 3));
 
-      // Weighted ensemble similarity
-      return (hashSim * 0.45) + (corr * 0.40) + (colorSim * 0.15);
+          const sim = (hashSim * 0.45) + (corr * 0.40) + (colorSim * 0.15);
+          if (sim > maxSim) maxSim = sim;
+        }
+      }
+      return maxSim;
     }
 
     // Dynamic Kiosk Target Student Dropdown
@@ -1702,7 +1738,7 @@
       }
 
       // 4. Strict Biometric Matching against Enrolled Students
-      const STRICT_MATCH_THRESHOLD = 0.58; // 58% minimum biometric similarity required
+      const STRICT_MATCH_THRESHOLD = 0.52; // 52% minimum biometric similarity across multi-scale & dual-orientation
       const targetSelect = document.getElementById('kioskTargetSelect');
       const selectedTargetId = targetSelect ? targetSelect.value : 'auto';
 
@@ -1713,7 +1749,7 @@
         // Specific manual target selected: strictly verify live face against this student
         const targetStudent = enrolledStudents.find(s => s.id == selectedTargetId);
         if (targetStudent && targetStudent.photo) {
-          const sFeat = await extractFaceFeatures(targetStudent.photo);
+          const sFeat = await getStudentBiometrics(targetStudent);
           if (sFeat) {
             const score = computeBiometricSimilarity(liveFeatures, sFeat);
             if (score >= STRICT_MATCH_THRESHOLD) {
@@ -1730,7 +1766,7 @@
         let bestScore = -1;
 
         for (const s of enrolledStudents) {
-          const sFeat = await extractFaceFeatures(s.photo);
+          const sFeat = await getStudentBiometrics(s);
           if (sFeat) {
             const score = computeBiometricSimilarity(liveFeatures, sFeat);
             if (score > bestScore) {
@@ -2234,6 +2270,7 @@
 
       students.push(newStudent);
       localStorage.setItem('bio_students', JSON.stringify(students));
+      studentFeatureCache.clear();
 
       const modalEl = document.getElementById('addStudentModal');
       const modalInstance = bootstrap.Modal.getInstance(modalEl);
@@ -2386,6 +2423,7 @@
       });
       localStorage.setItem('bio_logs', JSON.stringify(attendanceLogs));
       localStorage.setItem('bio_students', JSON.stringify(students));
+      studentFeatureCache.clear();
 
       const modalEl = document.getElementById('editStudentModal');
       const modalInstance = bootstrap.Modal.getInstance(modalEl);
@@ -2406,6 +2444,7 @@
       if (!confirm(`Are you sure you want to permanently delete student "${s.name}" (${s.regNo})?`)) return;
       students = students.filter(x => x.id !== id);
       localStorage.setItem('bio_students', JSON.stringify(students));
+      studentFeatureCache.clear();
       renderStudents();
       renderAdmin();
       renderLogs();
@@ -2424,6 +2463,7 @@
       activeStudentProfile = null;
       localStorage.setItem('bio_students', JSON.stringify([]));
       localStorage.setItem('bio_logs', JSON.stringify([]));
+      studentFeatureCache.clear();
       renderStudents();
       renderAdmin();
       renderLogs();
