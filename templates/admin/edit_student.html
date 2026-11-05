@@ -57,6 +57,11 @@
               <input type="email" class="form-control" id="email" name="email" value="{{ student.email or '' }}">
             </div>
 
+            <div class="mb-3">
+              <label for="phone_number" class="form-label fw-semibold">Phone Number</label>
+              <input type="tel" class="form-control" id="phone_number" name="phone_number" value="{{ student.phone_number or '' }}" placeholder="+91 98765 43210">
+            </div>
+
             <div class="mb-4">
               <label class="form-label fw-semibold">Enrollment Status</label>
               <div class="form-check form-switch">
