@@ -467,13 +467,13 @@
                           <i class="bi bi-check-circle-fill"></i>
                         </div>
                         <div>
-                          <h5 class="fw-bold mb-0 text-dark" id="resultTitle">Attendance Verified</h5>
-                          <small id="resultSubtitle" class="text-muted">Biometric match confirmed</small>
+                          <h5 class="fw-bold mb-0 text-dark" id="resultTitle">Verification Status</h5>
+                          <small id="resultSubtitle" class="text-muted">Awaiting scan</small>
                         </div>
                       </div>
 
-                      <!-- Profile Card: Displayed ONLY for Recognized Registered Member -->
-                      <div id="studentDetailsCard" class="bg-white p-3 rounded-3 border mb-3 shadow-sm d-none">
+                      <!-- Profile Card: Displayed for Recognized Registered Member -->
+                      <div id="studentDetailsCard" class="bg-white p-3 rounded-3 border mb-3 shadow-sm">
                         
                         <div class="d-flex align-items-center gap-3 mb-2">
                           <div id="resAvatarWrapper">
@@ -1675,10 +1675,17 @@
       isScanning = true;
 
       const detailsCard = document.getElementById('studentDetailsCard');
-      if (detailsCard) detailsCard.classList.add('d-none');
+      if (detailsCard) {
+        detailsCard.classList.add('d-none');
+        detailsCard.style.display = 'none';
+      }
 
+      const resultBox = document.getElementById('resultBox');
+      if (resultBox) {
+        resultBox.classList.add('d-none');
+        resultBox.style.display = 'none';
+      }
       document.getElementById('idleState').classList.add('d-none');
-      document.getElementById('resultBox').classList.add('d-none');
       document.getElementById('scanningState').classList.remove('d-none');
       cameraBox.classList.add('scanning');
       faceGuide.classList.add('active');
@@ -1692,18 +1699,20 @@
       faceGuide.classList.remove('active');
       document.getElementById('scanningState').classList.add('d-none');
 
-      const resultBox = document.getElementById('resultBox');
-      resultBox.classList.remove('d-none');
-
       // 1. Guard against empty student database or lack of registered photos
       const enrolledStudents = students.filter(s => s.photo && s.status !== 'Inactive');
       if (!students || students.length === 0 || enrolledStudents.length === 0) {
-        if (detailsCard) detailsCard.classList.add('d-none');
+        if (detailsCard) {
+          detailsCard.classList.add('d-none');
+          detailsCard.style.display = 'none';
+        }
         resultBox.className = 'result-box text-start p-3 rounded-3 bg-warning-subtle border border-warning-subtle text-warning-emphasis';
         document.getElementById('resultIcon').innerHTML = '<i class="bi bi-person-x-fill text-warning"></i>';
         document.getElementById('resultTitle').innerText = 'No Registered Faces';
         document.getElementById('resultSubtitle').innerText = 'Registration Required';
         document.getElementById('resMessage').innerText = 'No registered student faces found in the database. Please register students with face photos in the Students Directory first.';
+        resultBox.classList.remove('d-none');
+        resultBox.style.display = 'block';
 
         playBeep('info');
         isScanning = false;
@@ -1712,12 +1721,17 @@
 
       // 2. Guard against camera offline / denied / no captured frame
       if (!capturedPhoto) {
-        if (detailsCard) detailsCard.classList.add('d-none');
+        if (detailsCard) {
+          detailsCard.classList.add('d-none');
+          detailsCard.style.display = 'none';
+        }
         resultBox.className = 'result-box text-start p-3 rounded-3 bg-danger-subtle border border-danger-subtle text-danger-emphasis';
         document.getElementById('resultIcon').innerHTML = '<i class="bi bi-camera-video-off-fill text-danger"></i>';
         document.getElementById('resultTitle').innerText = 'Camera Offline / Denied';
         document.getElementById('resultSubtitle').innerText = 'Live Feed Required';
         document.getElementById('resMessage').innerText = 'Camera access is required for facial recognition. Please grant camera permission or select a valid camera device.';
+        resultBox.classList.remove('d-none');
+        resultBox.style.display = 'block';
 
         playBeep('error');
         isScanning = false;
@@ -1729,12 +1743,17 @@
 
       // Check if camera is covered / blank / low light
       if (!liveFeatures || liveFeatures.stdDev < 10) {
-        if (detailsCard) detailsCard.classList.add('d-none');
+        if (detailsCard) {
+          detailsCard.classList.add('d-none');
+          detailsCard.style.display = 'none';
+        }
         resultBox.className = 'result-box text-start p-3 rounded-3 bg-warning-subtle border border-warning-subtle text-warning-emphasis';
         document.getElementById('resultIcon').innerHTML = '<i class="bi bi-eye-slash-fill text-warning"></i>';
         document.getElementById('resultTitle').innerText = 'No Face Detected';
         document.getElementById('resultSubtitle').innerText = 'Camera Obscured or Low Light';
         document.getElementById('resMessage').innerText = 'Please ensure proper lighting and position your face directly inside the scanning portal.';
+        resultBox.classList.remove('d-none');
+        resultBox.style.display = 'block';
 
         playBeep('info');
         isScanning = false;
@@ -1790,24 +1809,30 @@
 
       // 5. Strict Rejection if Unknown Face / Unregistered Person / Low Similarity
       if (!matched) {
-        if (detailsCard) detailsCard.classList.add('d-none');
+        if (detailsCard) {
+          detailsCard.classList.add('d-none');
+          detailsCard.style.display = 'none';
+        }
         resultBox.className = 'result-box text-start p-3 rounded-3 bg-danger-subtle border border-danger-subtle text-danger-emphasis';
         document.getElementById('resultIcon').innerHTML = '<i class="bi bi-person-x-fill text-danger"></i>';
         document.getElementById('resultTitle').innerText = 'ACCESS DENIED – FACE NOT RECOGNIZED';
         document.getElementById('resultSubtitle').innerText = `Unregistered Face - Access Denied (${(matchScore * 100).toFixed(1)}%)`;
         document.getElementById('resMessage').innerText = 'ACCESS DENIED – FACE NOT RECOGNIZED. Scanned face does not match any registered member. Attendance not marked.';
+        resultBox.classList.remove('d-none');
+        resultBox.style.display = 'block';
 
         playBeep('error');
         isScanning = false;
         return; // ABSOLUTELY NO ATTENDANCE RECORDED!
       }
 
-      // 6. Match Verified! Unhide Profile Card and Display ONLY Recognized Person's Details
-      if (detailsCard) detailsCard.classList.remove('d-none');
-
+      // 6. Match Verified! Populate Details Card and Display ONLY Recognized Person's Details
       const todayDateStr = new Date().toISOString().slice(0, 10);
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const sessionName = document.getElementById('sessionSelect').selectedOptions[0].text;
+      const sessSelect = document.getElementById('sessionSelect');
+      const sessionName = (sessSelect && sessSelect.selectedOptions && sessSelect.selectedOptions.length > 0)
+        ? sessSelect.selectedOptions[0].text
+        : 'General Session';
 
       // Count prior scans for this registered person today
       const priorScansToday = attendanceLogs.filter(l => 
@@ -1841,7 +1866,7 @@
         localStorage.setItem('bio_logs', JSON.stringify(attendanceLogs));
       }
 
-      // UI Confirmation Box
+      // UI Confirmation Box styling
       resultBox.className = 'result-box text-start p-3 rounded-3 bg-success-subtle border border-success-subtle text-success';
       document.getElementById('resultIcon').innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
 
@@ -1859,7 +1884,7 @@
       // Display Matched Student's Registered Photo & Info ONLY (Zero Blanks / Zero Placeholders)
       const avatarWrapper = document.getElementById('resAvatarWrapper');
       if (matched.photo) {
-        avatarWrapper.innerHTML = `<img src="${matched.photo}" class="student-avatar shadow-sm object-fit-cover border border-2 border-success" alt="${matched.name}">`;
+        avatarWrapper.innerHTML = `<img src="${matched.photo}" class="student-avatar shadow-sm object-fit-cover border border-2 border-success" alt="${matched.name}" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5\\'>${matched.name ? matched.name[0] : 'S'}</div>';">`;
       } else {
         avatarWrapper.innerHTML = `<div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5">${matched.name ? matched.name[0] : 'S'}</div>`;
       }
@@ -1889,6 +1914,24 @@
       document.getElementById('resConf').innerText = `${(matchScore * 100).toFixed(1)}%`;
       document.getElementById('resConf').className = 'text-success fw-bold';
       document.getElementById('resEmotion').innerText = 'Focused 😊';
+
+      // Explicitly unhide Details Card and Result Box
+      if (detailsCard) {
+        detailsCard.classList.remove('d-none');
+        detailsCard.style.display = 'block';
+      }
+      resultBox.classList.remove('d-none');
+      resultBox.style.display = 'block';
+
+      // Refresh other tabs
+      renderLogs();
+      renderAdmin();
+      if (!document.getElementById('studentTab').classList.contains('d-none')) {
+        renderStudentPortal();
+      }
+
+      isScanning = false;
+    }
 
       // Refresh other tabs
       renderLogs();

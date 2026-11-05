@@ -442,6 +442,7 @@
 
     if (student) {
       studentDetailsCard.classList.remove('d-none');
+      studentDetailsCard.style.display = 'block';
       studentName.innerText = student.name;
       studentRegNo.innerText = student.register_number;
       studentDept.innerText = student.department;
@@ -474,12 +475,13 @@
       emotionText.innerText = emo;
 
       if (student.photo) {
-        studentPhotoWrapper.innerHTML = `<img src="/uploads/students/${student.photo}" class="student-avatar" alt="Avatar">`;
+        studentPhotoWrapper.innerHTML = `<img src="/uploads/students/${student.photo}" class="student-avatar" alt="Avatar" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5\\'>${(student.name ? student.name[0] : 'S')}</div>';">`;
       } else {
-        studentPhotoWrapper.innerHTML = `<div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5">${student.name[0]}</div>`;
+        studentPhotoWrapper.innerHTML = `<div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5">${student.name ? student.name[0] : 'S'}</div>`;
       }
     } else {
       studentDetailsCard.classList.add('d-none');
+      studentDetailsCard.style.display = 'none';
     }
   }
 

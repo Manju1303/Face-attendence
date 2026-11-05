@@ -220,7 +220,23 @@ def verify_attendance():
                 'status': 'ALREADY_MARKED',
                 'already_marked': True,
                 'message': f'Attendance already recorded at {existing_attendance.check_in_time.strftime("%I:%M %p")}.',
-                'student': matched_student.to_dict()
+                'student': {
+                    'id': matched_student.id,
+                    'name': matched_student.full_name,
+                    'register_number': matched_student.register_number,
+                    'department': matched_student.department,
+                    'class_year': matched_student.class_year,
+                    'email': matched_student.email or f"{matched_student.register_number.lower()}@university.edu",
+                    'phone_number': matched_student.phone_number or "+91 98765 43210",
+                    'attendance_date': today.strftime('%Y-%m-%d'),
+                    'status': 'PRESENT',
+                    'photo': matched_student.photo_filename
+                },
+                'session_name': target_session.session_name,
+                'check_in_time': existing_attendance.check_in_time.strftime('%I:%M:%S %p'),
+                'confidence': round(similarity_score * 100, 1),
+                'emotion': dominant_emotion,
+                'bbox': bbox
             })
         return jsonify({
             'success': False,
