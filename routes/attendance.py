@@ -128,7 +128,7 @@ def verify_attendance():
         return jsonify({
             'success': False,
             'status': 'UNRECOGNIZED',
-            'message': 'Face not recognized. Please contact the administrator.',
+            'message': 'Face Not Registered. Attendance is not marked.',
             'confidence': round(similarity_score * 100, 1) if similarity_score > 0 else 0.0,
             'bbox': bbox
         })

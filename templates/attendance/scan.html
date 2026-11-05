@@ -510,9 +510,9 @@
       } else if (res.status === 'UNRECOGNIZED') {
         showResultState({
           type: 'danger',
-          title: 'Face Not Recognized',
-          subtitle: 'Unregistered',
-          message: res.message
+          title: 'Face Not Registered',
+          subtitle: 'Unregistered Face',
+          message: res.message || 'Face Not Registered. Attendance is not marked.'
         });
         playTone('error');
       } else {

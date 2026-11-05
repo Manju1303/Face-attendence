@@ -862,7 +862,7 @@
               <thead>
                 <tr>
                   <th>Student</th>
-                  <th>Register No</th>
+                  <th>Face ID / Reg No</th>
                   <th>Session</th>
                   <th>Check-In Time</th>
                   <th>Status</th>
@@ -1752,65 +1752,76 @@
       if (!matched) {
         resultBox.className = 'result-box text-start p-3 rounded-3 bg-danger-subtle border border-danger-subtle text-danger-emphasis';
         document.getElementById('resultIcon').innerHTML = '<i class="bi bi-person-x-fill text-danger"></i>';
-        document.getElementById('resultTitle').innerText = 'Face Not Recognized: Access Denied';
-        document.getElementById('resultSubtitle').innerText = `Similarity: ${(matchScore * 100).toFixed(1)}% (Threshold >= ${(STRICT_MATCH_THRESHOLD * 100).toFixed(0)}%)`;
-        document.getElementById('resMessage').innerText = 'Access Denied: This face does not match any registered student. Attendance is not marked.';
+        document.getElementById('resultTitle').innerText = 'Face Not Registered';
+        document.getElementById('resultSubtitle').innerText = `Unregistered Face - Access Denied (${(matchScore * 100).toFixed(1)}%)`;
+        document.getElementById('resMessage').innerText = 'Face Not Registered. Attendance is not marked. Only registered faces are accepted.';
 
-        document.getElementById('resAvatarWrapper').innerHTML = `<img src="${capturedPhoto}" class="student-avatar shadow-sm object-fit-cover border border-2 border-danger" alt="Unrecognized Face">`;
-        document.getElementById('resName').innerText = 'Unregistered Person';
-        document.getElementById('resRegNo').innerText = 'ACCESS DENIED';
+        document.getElementById('resAvatarWrapper').innerHTML = `<img src="${capturedPhoto}" class="student-avatar shadow-sm object-fit-cover border border-2 border-danger" alt="Face Not Registered">`;
+        document.getElementById('resName').innerText = 'Face Not Registered';
+        document.getElementById('resRegNo').innerText = 'UNREGISTERED';
         document.getElementById('resDept').innerText = 'Not Enrolled';
         document.getElementById('resClass').innerText = '-';
         document.getElementById('resTime').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         document.getElementById('resConf').innerText = `${(matchScore * 100).toFixed(1)}%`;
         document.getElementById('resConf').className = 'text-danger fw-bold';
-        document.getElementById('resEmotion').innerText = 'Unverified 🚫';
+        document.getElementById('resEmotion').innerText = 'Unregistered 🚫';
 
         playBeep('error');
         isScanning = false;
         return; // ABSOLUTELY NO ATTENDANCE RECORDED!
       }
 
-      // 6. Match Verified! Proceed to Same-Day Duplicate Prevention
+      // 6. Match Verified! Record Attendance Entry (with exact current scan time)
       const todayDateStr = new Date().toISOString().slice(0, 10);
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const sessionName = document.getElementById('sessionSelect').selectedOptions[0].text;
 
-      // Duplicate Check: Same person cannot mark attendance multiple times on the same day (or same session)
-      const already = attendanceLogs.find(l => 
+      // Count prior scans for this registered person today
+      const priorScansToday = attendanceLogs.filter(l => 
         (String(l.studentId) === String(matched.id) || l.regNo === matched.regNo) &&
-        (l.date === todayDateStr || l.session === sessionName)
+        (l.date === todayDateStr)
       );
 
-      if (already) {
-        resultBox.className = 'result-box text-start p-3 rounded-3 bg-primary-subtle border border-primary-subtle text-primary';
-        document.getElementById('resultIcon').innerHTML = '<i class="bi bi-info-circle-fill text-primary"></i>';
-        document.getElementById('resultTitle').innerText = 'Already Marked Today';
-        document.getElementById('resultSubtitle').innerText = `${matched.name} (${matched.regNo})`;
-        document.getElementById('resMessage').innerText = `Attendance was already recorded for ${matched.name} (${matched.regNo}) today at ${already.time}. Duplicate entry prevented.`;
-        playBeep('info');
-      } else {
-        resultBox.className = 'result-box text-start p-3 rounded-3 bg-success-subtle border border-success-subtle text-success';
-        document.getElementById('resultIcon').innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
-        document.getElementById('resultTitle').innerText = 'Attendance Verified!';
-        document.getElementById('resultSubtitle').innerText = `${matched.name} (${matched.regNo})`;
-        document.getElementById('resMessage').innerText = `Biometric match confirmed (${(matchScore * 100).toFixed(1)}% similarity). Attendance recorded.`;
+      // Debounce: prevent accidental duplicate within 2.5s
+      const lastScanForStudent = attendanceLogs.find(l => (String(l.studentId) === String(matched.id) || l.regNo === matched.regNo));
+      const isAccidentalRapidClick = lastScanForStudent && (Date.now() - (lastScanForStudent.timestamp || 0) < 2500);
 
-        attendanceLogs.unshift({
+      if (!isAccidentalRapidClick) {
+        // Record new attendance entry linked to the correct registered person's name and Face ID
+        const newLogEntry = {
           id: Date.now(),
+          timestamp: Date.now(),
           studentId: matched.id,
+          faceId: matched.regNo,
           regNo: matched.regNo,
           name: matched.name,
           date: todayDateStr,
           session: sessionName,
           time: timeStr,
+          scanCount: priorScansToday.length + 1,
           status: 'Present',
           conf: `${(matchScore * 100).toFixed(1)}%`,
           method: 'Biometric Face Recognition'
-        });
+        };
+
+        attendanceLogs.unshift(newLogEntry);
         localStorage.setItem('bio_logs', JSON.stringify(attendanceLogs));
-        playBeep('success');
       }
+
+      // UI Confirmation Card
+      resultBox.className = 'result-box text-start p-3 rounded-3 bg-success-subtle border border-success-subtle text-success';
+      document.getElementById('resultIcon').innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+
+      if (priorScansToday.length > 0) {
+        document.getElementById('resultTitle').innerText = 'Attendance Recorded (New Scan)';
+        document.getElementById('resultSubtitle').innerText = `${matched.name} | Face ID: ${matched.regNo}`;
+        document.getElementById('resMessage').innerText = `Re-scan recorded at ${timeStr}. (Scan #${priorScansToday.length + 1} today)`;
+      } else {
+        document.getElementById('resultTitle').innerText = 'Attendance Verified!';
+        document.getElementById('resultSubtitle').innerText = `${matched.name} | Face ID: ${matched.regNo}`;
+        document.getElementById('resMessage').innerText = `Biometric match confirmed (${(matchScore * 100).toFixed(1)}% similarity). Attendance recorded at ${timeStr}.`;
+      }
+      playBeep('success');
 
       // Display Matched Student's Registered Photo & Info
       const avatarWrapper = document.getElementById('resAvatarWrapper');
@@ -1821,12 +1832,12 @@
       }
 
       document.getElementById('resName').innerText = matched.name;
-      document.getElementById('resRegNo').innerText = matched.regNo;
+      document.getElementById('resRegNo').innerText = `Face ID: ${matched.regNo}`;
       document.getElementById('resDept').innerText = matched.dept;
       document.getElementById('resClass').innerText = matched.classYear;
-      document.getElementById('resTime').innerText = already ? already.time : timeStr;
+      document.getElementById('resTime').innerText = timeStr;
       document.getElementById('resConf').innerText = `${(matchScore * 100).toFixed(1)}%`;
-      document.getElementById('resConf').className = already ? 'text-primary fw-bold' : 'text-success fw-bold';
+      document.getElementById('resConf').className = 'text-success fw-bold';
       document.getElementById('resEmotion').innerText = 'Verified Focused 😊';
 
       // Refresh other tabs
@@ -2073,21 +2084,28 @@
 
       attendanceLogs.forEach(l => {
         const tr = document.createElement('tr');
-        const st = students.find(s => s.regNo === l.regNo);
+        const st = students.find(s => s.regNo === (l.regNo || l.faceId));
         const avatarHtml = (st && st.photo)
           ? `<img src="${st.photo}" class="student-avatar shadow-sm object-fit-cover" alt="${l.name}">`
           : `<div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold">${l.name ? l.name[0] : 'S'}</div>`;
+
+        const scanBadge = (l.scanCount && l.scanCount > 1) 
+          ? `<span class="badge bg-info-subtle text-info border ms-1 small">Scan #${l.scanCount}</span>` 
+          : '';
 
         tr.innerHTML = `
           <td>
             <div class="d-flex align-items-center gap-2">
               ${avatarHtml}
-              <strong>${l.name}</strong>
+              <div>
+                <strong>${l.name}</strong>
+                ${scanBadge}
+              </div>
             </div>
           </td>
-          <td><code>${l.regNo}</code></td>
+          <td><code>${l.faceId || l.regNo}</code></td>
           <td>${l.session}</td>
-          <td class="font-monospace text-primary">${l.time}</td>
+          <td class="font-monospace text-primary fw-semibold">${l.time}</td>
           <td><span class="badge badge-soft-success">${l.status}</span></td>
           <td class="fw-bold text-success">${l.conf}</td>
           <td><small class="text-muted">${l.method}</small></td>
@@ -2416,9 +2434,9 @@
     }
 
     function exportCSV() {
-      let csv = "Register Number,Name,Session,Time,Status,Confidence,Method\n";
+      let csv = "Face ID,Student Name,Session,Date,Check-In Time,Status,Confidence,Method\n";
       attendanceLogs.forEach(l => {
-        csv += `"${l.regNo}","${l.name}","${l.session}","${l.time}","${l.status}","${l.conf}","${l.method}"\n`;
+        csv += `"${l.faceId || l.regNo}","${l.name}","${l.session}","${l.date || ''}","${l.time}","${l.status}","${l.conf}","${l.method}"\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv' });
       const a = document.createElement('a');
