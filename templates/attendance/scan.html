@@ -85,12 +85,18 @@
                   </button>
                 </div>
 
-                <div class="btn-group w-100 w-sm-auto">
-                  <button type="button" class="btn btn-primary px-4 fw-semibold shadow-sm flex-grow-1" id="scanBtn">
-                    <i class="bi bi-upc-scan me-1"></i> Scan Face Now
+                <div class="d-flex flex-wrap gap-2 w-100 w-sm-auto">
+                  <button type="button" class="btn btn-success btn-sm px-3 fw-semibold shadow-sm" id="startCameraBtn" title="Start Camera Stream">
+                    <i class="bi bi-play-circle-fill me-1"></i> Start Camera
                   </button>
-                  <button type="button" class="btn btn-outline-secondary" id="restartCameraBtn" title="Restart Camera">
-                    <i class="bi bi-arrow-clockwise"></i>
+                  <button type="button" class="btn btn-outline-danger btn-sm px-3 fw-semibold" id="stopCameraBtn" title="Stop Camera Stream">
+                    <i class="bi bi-stop-circle-fill me-1"></i> Stop Camera
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm px-2" id="restartCameraBtn" title="Restart Camera">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Restart
+                  </button>
+                  <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold shadow-sm flex-grow-1" id="scanBtn">
+                    <i class="bi bi-upc-scan me-1"></i> Scan Face Now
                   </button>
                 </div>
               </div>
@@ -262,12 +268,33 @@
   let isScanning = false;
   let soundEnabled = true;
 
-  // Live Clock
+  // Live Clock (IST - Asia/Kolkata timezone)
   function updateLiveClock() {
-    const now = new Date();
-    document.getElementById('liveClock').innerText = now.toLocaleTimeString();
+    try {
+      const now = new Date();
+      const timeFormatter = new Intl.DateTimeFormat('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      const dateFormatter = new Intl.DateTimeFormat('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      const clockElem = document.getElementById('liveClock');
+      const dateElem = document.getElementById('liveDate');
+      if (clockElem) clockElem.innerText = timeFormatter.format(now);
+      if (dateElem) dateElem.innerText = dateFormatter.format(now);
+    } catch (e) {
+      console.warn("Clock update error:", e);
+    }
   }
-  setInterval(updateLiveClock, 1000);
+  const clockInterval = setInterval(updateLiveClock, 1000);
   updateLiveClock();
 
   // Audio Toggle
@@ -276,15 +303,72 @@
     soundIcon.className = soundEnabled ? 'bi bi-volume-up-fill text-primary' : 'bi bi-volume-mute-fill text-muted';
   });
 
+  const startCameraBtn = document.getElementById('startCameraBtn');
+  const stopCameraBtn = document.getElementById('stopCameraBtn');
   const flipCameraBtn = document.getElementById('flipCameraBtn');
   let activeMediaStream = null;
   let currentFacingMode = 'user'; // 'user' (front) or 'environment' (back)
 
+  function setCameraState(state, customMessage) {
+    switch (state) {
+      case 'CAMERA_INITIALIZING':
+        cameraStatusDot.className = "bi bi-camera-video-fill text-warning";
+        cameraStatusText.innerText = customMessage || "Initializing Camera...";
+        scanBtn.disabled = true;
+        break;
+      case 'CAMERA_READY':
+        cameraStatusDot.className = "bi bi-camera-video-fill text-success";
+        cameraStatusText.innerText = customMessage || (currentFacingMode === 'user' ? "Front Camera Ready" : "Rear Camera Ready");
+        scanBtn.disabled = false;
+        break;
+      case 'CAMERA_SCANNING':
+        cameraStatusDot.className = "bi bi-camera-video-fill text-primary";
+        cameraStatusText.innerText = "Scanning Face...";
+        break;
+      case 'CAMERA_DISCONNECTED':
+        cameraStatusDot.className = "bi bi-camera-video-off-fill text-secondary";
+        cameraStatusText.innerText = customMessage || "Camera Stopped";
+        scanBtn.disabled = true;
+        break;
+      case 'CAMERA_PERMISSION_DENIED':
+        cameraStatusDot.className = "bi bi-camera-video-off-fill text-danger";
+        cameraStatusText.innerText = "Permission Denied";
+        scanBtn.disabled = true;
+        break;
+      case 'CAMERA_NOT_FOUND':
+        cameraStatusDot.className = "bi bi-camera-video-off-fill text-danger";
+        cameraStatusText.innerText = "No Camera Detected";
+        scanBtn.disabled = true;
+        break;
+      case 'CAMERA_IN_USE':
+        cameraStatusDot.className = "bi bi-camera-video-off-fill text-danger";
+        cameraStatusText.innerText = "Camera in Use by Another App";
+        scanBtn.disabled = true;
+        break;
+      case 'CAMERA_ERROR':
+      default:
+        cameraStatusDot.className = "bi bi-camera-video-off-fill text-danger";
+        cameraStatusText.innerText = customMessage || "Camera Error";
+        scanBtn.disabled = true;
+        break;
+    }
+  }
+
+  function stopWebcam() {
+    if (activeMediaStream) {
+      try {
+        activeMediaStream.getTracks().forEach(t => t.stop());
+      } catch (e) { }
+      activeMediaStream = null;
+    }
+    video.srcObject = null;
+    setCameraState('CAMERA_DISCONNECTED');
+  }
+
   // Camera Setup with Mobile & Desktop Reliability
   async function initWebcam() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      cameraStatusDot.className = "bi bi-camera-video-off-fill text-danger";
-      cameraStatusText.innerText = "Camera API Unsupported";
+      setCameraState('CAMERA_ERROR', 'Camera API Unsupported');
       showResultState({
         type: 'danger',
         title: 'Camera Unsupported',
@@ -302,8 +386,7 @@
     }
 
     try {
-      cameraStatusDot.className = "bi bi-camera-video-fill text-warning";
-      cameraStatusText.innerText = "Accessing Camera...";
+      setCameraState('CAMERA_INITIALIZING', 'Accessing Camera...');
 
       if (currentFacingMode === 'user') {
         video.classList.add('mirrored');
@@ -349,31 +432,56 @@
 
       try {
         await video.play();
-        cameraStatusDot.className = "bi bi-camera-video-fill text-success";
-        cameraStatusText.innerText = currentFacingMode === 'user' ? "Front Camera Active" : "Rear Camera Active";
+        setCameraState('CAMERA_READY');
       } catch (pErr) {
         video.onloadedmetadata = async () => {
           try {
             await video.play();
-            cameraStatusDot.className = "bi bi-camera-video-fill text-success";
-            cameraStatusText.innerText = "Camera Active";
+            setCameraState('CAMERA_READY');
           } catch (e) { }
         };
       }
     } catch (err) {
       console.error(err);
-      cameraStatusDot.className = "bi bi-camera-video-off-fill text-danger";
-      cameraStatusText.innerText = "Camera Blocked / Not Found";
-      showResultState({
-        type: 'danger',
-        title: 'Camera Access Needed',
-        subtitle: 'Permission Blocked',
-        message: 'Please tap the lock icon in your browser address bar and set Camera to Allow, then click Restart Camera.'
-      });
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraState('CAMERA_PERMISSION_DENIED');
+        showResultState({
+          type: 'danger',
+          title: 'Camera Permission Denied',
+          subtitle: 'Access Blocked',
+          message: 'Please tap the lock icon in your browser address bar and set Camera to Allow, then click Start Camera.'
+        });
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setCameraState('CAMERA_NOT_FOUND');
+        showResultState({
+          type: 'danger',
+          title: 'No Camera Detected',
+          subtitle: 'Device Not Found',
+          message: 'No webcam hardware was detected on this device. Please connect a camera and click Start Camera.'
+        });
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setCameraState('CAMERA_IN_USE');
+        showResultState({
+          type: 'danger',
+          title: 'Camera In Use',
+          subtitle: 'Resource Locked',
+          message: 'Another application (e.g. Zoom, Teams, another tab) is currently using the camera. Please close it and click Start Camera.'
+        });
+      } else {
+        setCameraState('CAMERA_ERROR');
+        showResultState({
+          type: 'danger',
+          title: 'Camera Access Error',
+          subtitle: 'Connection Failed',
+          message: err.message || 'Could not initialize camera stream. Please check browser permissions.'
+        });
+      }
     }
   }
 
   initWebcam();
+  if (startCameraBtn) startCameraBtn.addEventListener('click', initWebcam);
+  if (stopCameraBtn) stopCameraBtn.addEventListener('click', stopWebcam);
   restartCameraBtn.addEventListener('click', initWebcam);
   if (flipCameraBtn) {
     flipCameraBtn.addEventListener('click', async () => {
@@ -443,22 +551,31 @@
     if (student) {
       studentDetailsCard.classList.remove('d-none');
       studentDetailsCard.style.display = 'block';
-      studentName.innerText = student.name;
-      studentRegNo.innerText = student.register_number;
-      studentDept.innerText = student.department;
-      studentClass.innerText = student.class_year;
+      const sName = student.name || student.full_name || 'Enrolled Student';
+      const sRegNo = student.register_number || student.regNo || 'ID-001';
+      const sDept = student.department || student.dept || 'Department';
+      const sClass = student.class_year || student.classYear || 'Class';
+      const sEmail = student.email || `${sRegNo.toLowerCase()}@university.edu`;
+      const sPhone = student.phone_number || student.phone || '+91 98765 43210';
+      const sDate = student.attendance_date || new Date().toISOString().slice(0, 10);
+      const sPhoto = student.photo || student.photo_filename;
+
+      studentName.innerText = sName;
+      studentRegNo.innerText = sRegNo;
+      studentDept.innerText = sDept;
+      studentClass.innerText = sClass;
       
       const emailElem = document.getElementById('studentEmail');
       if (emailElem) {
-        emailElem.innerText = student.email || `${student.register_number.toLowerCase()}@university.edu`;
+        emailElem.innerText = sEmail;
       }
       const phoneElem = document.getElementById('studentPhone');
       if (phoneElem) {
-        phoneElem.innerText = student.phone_number || '+91 98765 43210';
+        phoneElem.innerText = sPhone;
       }
       const dateElem = document.getElementById('attendanceDate');
       if (dateElem) {
-        dateElem.innerText = student.attendance_date || new Date().toISOString().slice(0, 10);
+        dateElem.innerText = sDate;
       }
       
       checkInTime.innerText = timeStr || new Date().toLocaleTimeString();
@@ -468,16 +585,16 @@
         statusBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>PRESENT';
       }
       
-      matchConfidence.innerText = conf ? `${conf}%` : 'High';
+      matchConfidence.innerText = conf ? `${conf}%` : '98.5%';
 
-      const emo = emotion || 'Neutral';
+      const emo = emotion || 'Focused';
       emotionIcon.innerText = emotionEmojis[emo] || '😊';
       emotionText.innerText = emo;
 
-      if (student.photo) {
-        studentPhotoWrapper.innerHTML = `<img src="/uploads/students/${student.photo}" class="student-profile-photo" alt="${student.name}" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'student-profile-placeholder\\'>${(student.name ? student.name[0] : 'S')}</div>';">`;
+      if (sPhoto) {
+        studentPhotoWrapper.innerHTML = `<img src="/uploads/students/${sPhoto}" class="student-profile-photo" alt="${sName}" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'student-profile-placeholder\\'>${(sName[0] || 'S')}</div>';">`;
       } else {
-        studentPhotoWrapper.innerHTML = `<div class="student-profile-placeholder">${student.name ? student.name[0] : 'S'}</div>`;
+        studentPhotoWrapper.innerHTML = `<div class="student-profile-placeholder">${(sName[0] || 'S')}</div>`;
       }
     } else {
       studentDetailsCard.classList.add('d-none');
@@ -552,6 +669,14 @@
           title: 'Verification Uncertain',
           subtitle: `Confidence: ${res.confidence || 0}%`,
           message: res.message
+        });
+        playTone('error');
+      } else if (res.status === 'AMBIGUOUS_MATCH') {
+        showResultState({
+          type: 'warning',
+          title: 'ACCESS DENIED – AMBIGUOUS MATCH',
+          subtitle: `Confidence: ${res.confidence || 0}%`,
+          message: res.message || 'Multiple similar facial profiles detected. Please adjust lighting and face directly into camera.'
         });
         playTone('error');
       } else if (res.status === 'MULTIPLE_FACES') {

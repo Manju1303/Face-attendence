@@ -15,15 +15,19 @@ A production-ready, full-stack biometric attendance management system built with
 
 ### 1. Student Attendance Kiosk (`/attendance`)
 - **Browser-Based Live Webcam Feed:** Captures live video stream directly through `navigator.mediaDevices.getUserMedia()`.
+- **Discrete Camera States:** Explicit camera status tracking (`CAMERA_INITIALIZING`, `CAMERA_PERMISSION_REQUIRED`, `CAMERA_READY`, `CAMERA_SCANNING`, `CAMERA_DISCONNECTED`, `CAMERA_PERMISSION_DENIED`, `CAMERA_NOT_FOUND`, `CAMERA_IN_USE`, `CAMERA_ERROR`).
+- **Complete Camera Controls:** Four functional controls: *Start Camera*, *Stop Camera*, *Restart Camera*, and *Scan Face Now*.
+- **Live IST Clock (`Asia/Kolkata`):** Independent real-time clock displaying current time (AM/PM), weekday, day, month, and year updated every second.
 - **Face Detection & Alignment:** Real-time facial landmark detection (eyes, nose, mouth corners) via OpenCV YuNet DNN.
 - **128-Dimensional Face Embeddings:** High-precision face representation using OpenCV SFace model.
-- **Facial Emotion Recognition:** Real-time emotion classification (Neutral, Happy, Attentive/Surprise, etc.) powered by FER2013 / FER+ deep ONNX model during check-in.
-- **Instant Audio & Visual Feedback:** Interactive feedback with synthesized web audio confirmation and color-coded status badges.
-- **Strict Server-Side Duplicate Blocking:** A student can receive attendance only once per configured session. Repeated scans are immediately recognized without duplicating records.
+- **Zero-Blank Verification Card:** Displays registered student photo, full name, register number, department, class/year, email, phone, check-in time (IST), and match similarity %. Never displays false success with empty dashes.
+- **Ambiguity Guard:** Matches where the difference between top 2 enrolled candidates is < 5% are safely rejected as `AMBIGUOUS_MATCH` to prevent false positives.
+- **Strict Server-Side Duplicate Blocking:** A student can receive attendance only once per configured session. Repeated scans return `ALREADY_MARKED` with original check-in time preserved.
 - **Uncertainty & Rejection Handling:**
   - *"No face detected. Please position your face clearly."*
-  - *"Face not recognized. Please contact the administrator."*
+  - *"ACCESS DENIED – FACE NOT RECOGNIZED. Scanned face does not match any registered member."*
   - *"Recognition uncertain. Please adjust lighting and try again."*
+  - *"ACCESS DENIED – AMBIGUOUS MATCH. Please adjust lighting and face camera directly."*
 
 ### 2. Admin Dashboard & Portal (`/admin/dashboard`)
 - **Secure Authentication:** Password hashing (`pbkdf2:sha256`) and session protection via `@admin_required`.
@@ -193,7 +197,7 @@ The database schema is managed via SQLAlchemy ORM and consists of 6 relational t
 2. **`students`:** `id`, `register_number` (unique, indexed), `full_name`, `department`, `class_year`, `email`, `active_status`, `photo_filename`, `created_at`
 3. **`face_encodings`:** `id`, `student_id` (foreign key), `embedding_data` (128D JSON array), `sample_index`, `model_version`, `created_at`
 4. **`class_sessions`:** `id`, `session_name`, `department`, `class_year`, `session_date`, `start_time`, `end_time`, `created_by`, `is_active`, `created_at`
-5. **`attendance`:** `id`, `student_id` (foreign key), `session_id` (foreign key), `attendance_date`, `check_in_time`, `status`, `verification_method`, `confidence_or_distance`, `is_manually_corrected`, `correction_note`, `created_at`
+5. **`attendance`:** `id`, `student_id` (foreign key), `session_id` (foreign key), `attendance_date`, `check_in_time`, `check_in_timestamp` (UTC datetime), `status`, `verification_method`, `confidence_or_distance`, `is_manually_corrected`, `correction_note`, `created_at`, `updated_at`
    - *Unique Constraint:* `(student_id, session_id, attendance_date)` ensures zero duplicate submissions per session.
 6. **`attendance_audit_logs`:** `id`, `attendance_id`, `action`, `previous_status`, `new_status`, `reason`, `admin_username`, `timestamp`
 

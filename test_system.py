@@ -696,5 +696,147 @@ class BiometricAttendanceSystemTestSuite(unittest.TestCase):
                 self.assertNotIn(b'Traceback (most recent call last)', r.data)
                 self.assertNotIn(b'Internal Server Error', r.data)
 
+    def test_21_ambiguous_match_rejection(self):
+        """Verify that when two different students produce near-identical match similarity (<5% gap), it is rejected as AMBIGUOUS_MATCH."""
+        with self.app.app_context():
+            s1 = Student(register_number='CS2026101', full_name='Alice Student', department='CSE', class_year='Year 3', active_status=True)
+            s2 = Student(register_number='CS2026102', full_name='Alicia Twin', department='CSE', class_year='Year 3', active_status=True)
+            db.session.add_all([s1, s2])
+            db.session.commit()
+
+            # Create base vector and near identical vector
+            base_vec = np.random.randn(128).astype(np.float32)
+            base_vec /= np.linalg.norm(base_vec)
+            near_vec = base_vec + (np.random.randn(128) * 0.01).astype(np.float32)
+            near_vec /= np.linalg.norm(near_vec)
+
+            fe1 = FaceEncoding(student_id=s1.id)
+            fe1.set_embedding(base_vec)
+            fe2 = FaceEncoding(student_id=s2.id)
+            fe2.set_embedding(near_vec)
+            db.session.add_all([fe1, fe2])
+            db.session.commit()
+
+            # Query with base_vec
+            match_status, matched_student, score, candidate = face_engine.find_best_match(
+                base_vec.tolist(),
+                [s1, s2],
+                threshold=0.60,
+                ambiguity_margin=0.05
+            )
+            self.assertEqual(match_status, 'AMBIGUOUS_MATCH')
+            self.assertIsNone(matched_student)
+
+    def test_22_timezone_aware_utc_and_ist_timestamps(self):
+        """Verify backend generates UTC check_in_timestamp and converts to valid IST time."""
+        from models import get_utc_now, get_ist_now, to_ist, IST
+        utc_now = get_utc_now()
+        ist_now = get_ist_now()
+
+        # Check timezone offsets
+        self.assertIsNotNone(utc_now.tzinfo)
+        self.assertIsNotNone(ist_now.tzinfo)
+        diff = ist_now.utcoffset()
+        self.assertEqual(diff.total_seconds(), 19800) # 5 hours 30 mins
+
+        # Verify conversion of stored UTC timestamp to IST
+        ist_converted = to_ist(utc_now)
+        self.assertEqual(ist_converted.hour, ist_now.hour)
+
+    def test_23_attendance_verification_complete_student_profile(self):
+        """Verify successful verification payload returns zero blank fields and complete student profile."""
+        with self.app.app_context():
+            student = Student.query.filter_by(register_number='CS2026001').first()
+            student.email = 'alex.cs@university.edu'
+            student.phone_number = '+91 98765 12345'
+            student.photo_filename = 'alex_profile.jpg'
+            db.session.commit()
+
+            # Enroll Lena face for this student
+            self.client.post('/login', data={'login_role': 'admin', 'admin_username': 'sysadmin', 'admin_password': 'AdminSecurePass2026!'})
+            self.client.post(f'/admin/students/{student.id}/re-enroll', data={'face_samples': json.dumps([self.lena_b64])})
+
+            sess = ClassSession.query.first()
+            sess_id = sess.id
+
+        resp = self.client.post('/api/verify-attendance', json={
+            'image': self.lena_b64,
+            'session_id': sess_id
+        })
+        data = resp.get_json()
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(data['success'])
+        self.assertEqual(data['status'], 'SUCCESS')
+
+        # Check all required fields are present and non-empty
+        s_data = data['student']
+        self.assertEqual(s_data['name'], 'Test Student Alex')
+        self.assertEqual(s_data['register_number'], 'CS2026001')
+        self.assertEqual(s_data['department'], 'Computer Science & Engineering')
+        self.assertEqual(s_data['class_year'], 'Year 3 - Semester 5')
+        self.assertEqual(s_data['email'], 'alex.cs@university.edu')
+        self.assertEqual(s_data['phone_number'], '+91 98765 12345')
+        self.assertEqual(s_data['status'], 'PRESENT')
+        self.assertIsNotNone(data['check_in_time'])
+        self.assertIsNotNone(data['confidence'])
+
+    def test_24_inactive_student_attendance_rejected(self):
+        """Verify that an inactive student cannot mark attendance."""
+        with self.app.app_context():
+            # Add another active student so database has active students
+            active_s = Student(
+                register_number='CS2026999',
+                full_name='Active Person',
+                department='CSE',
+                class_year='Year 3',
+                active_status=True
+            )
+            db.session.add(active_s)
+
+            student = Student.query.filter_by(register_number='CS2026001').first()
+            student.active_status = False
+            db.session.commit()
+
+            sess = ClassSession.query.first()
+            sess_id = sess.id
+
+        resp = self.client.post('/api/verify-attendance', json={
+            'image': self.lena_b64,
+            'session_id': sess_id
+        })
+        data = resp.get_json()
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(data['success'])
+        self.assertEqual(data['status'], 'UNRECOGNIZED')
+
+    def test_25_duplicate_attendance_preserves_initial_timestamp(self):
+        """Verify that duplicate attendance scans preserve original check-in timestamp and return ALREADY_MARKED."""
+        with self.app.app_context():
+            student = Student.query.filter_by(register_number='CS2026001').first()
+            student.active_status = True
+            db.session.commit()
+            sess = ClassSession.query.first()
+            sess_id = sess.id
+            student_id = student.id
+
+        # Enroll face for student
+        self.client.post('/login', data={'login_role': 'admin', 'admin_username': 'sysadmin', 'admin_password': 'AdminSecurePass2026!'})
+        self.client.post(f'/admin/students/{student_id}/re-enroll', data={'face_samples': json.dumps([self.lena_b64])})
+
+        # First scan
+        resp1 = self.client.post('/api/verify-attendance', json={'image': self.lena_b64, 'session_id': sess_id})
+        data1 = resp1.get_json()
+        self.assertEqual(data1['status'], 'SUCCESS')
+        initial_time = data1['check_in_time']
+
+        # Second scan (duplicate)
+        resp2 = self.client.post('/api/verify-attendance', json={'image': self.lena_b64, 'session_id': sess_id})
+        data2 = resp2.get_json()
+        self.assertEqual(data2['status'], 'ALREADY_MARKED')
+        self.assertTrue(data2['already_marked'])
+        self.assertEqual(data2['check_in_time'], initial_time)
+        self.assertEqual(data2['student']['name'], 'Test Student Alex')
+        self.assertIn('already recorded', data2['message'].lower())
+
 if __name__ == '__main__':
     unittest.main()

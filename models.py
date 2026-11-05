@@ -1,7 +1,26 @@
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone, timedelta
 import json
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+
+try:
+    from zoneinfo import ZoneInfo
+    IST = ZoneInfo("Asia/Kolkata")
+except Exception:
+    IST = timezone(timedelta(hours=5, minutes=30), name="Asia/Kolkata")
+
+def get_utc_now():
+    return datetime.now(timezone.utc)
+
+def get_ist_now():
+    return datetime.now(timezone.utc).astimezone(IST)
+
+def to_ist(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(IST)
 
 db = SQLAlchemy()
 
@@ -55,13 +74,18 @@ class Student(db.Model):
         return {
             'id': self.id,
             'register_number': self.register_number,
+            'regNo': self.register_number,
             'full_name': self.full_name,
+            'name': self.full_name,
             'department': self.department,
+            'dept': self.department,
             'class_year': self.class_year,
+            'classYear': self.class_year,
             'email': self.email or f"{self.register_number.lower()}@university.edu",
             'phone_number': self.phone_number or "+91 98765 43210",
             'active_status': self.active_status,
             'photo_filename': self.photo_filename,
+            'photo': self.photo_filename,
             'samples_count': len(self.encodings),
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None
         }
@@ -134,7 +158,8 @@ class Attendance(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('students.id', ondelete='CASCADE'), nullable=False, index=True)
     session_id = db.Column(db.Integer, db.ForeignKey('class_sessions.id', ondelete='CASCADE'), nullable=False, index=True)
     attendance_date = db.Column(db.Date, default=date.today, nullable=False, index=True)
-    check_in_time = db.Column(db.Time, default=lambda: datetime.now().time(), nullable=False)
+    check_in_time = db.Column(db.Time, default=lambda: get_ist_now().time(), nullable=False)
+    check_in_timestamp = db.Column(db.DateTime, default=get_utc_now, nullable=True)
     status = db.Column(db.String(20), default='Present', nullable=False)  # 'Present', 'Absent', 'Late', 'Excused'
     verification_method = db.Column(db.String(50), default='Face Recognition', nullable=False)
     confidence_or_distance = db.Column(db.Float, nullable=True)
@@ -145,7 +170,8 @@ class Attendance(db.Model):
     correction_note = db.Column(db.String(255), nullable=True)
     corrected_at = db.Column(db.DateTime, nullable=True)
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=get_utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now, nullable=False)
 
     __table_args__ = (
         # Ensure a student can only have 1 attendance record per class session
@@ -154,23 +180,39 @@ class Attendance(db.Model):
     )
 
     def to_dict(self):
+        ist_time_str = None
+        if self.check_in_timestamp:
+            ist_dt = to_ist(self.check_in_timestamp)
+            ist_time_str = ist_dt.strftime('%I:%M:%S %p')
+        elif self.check_in_time:
+            ist_time_str = self.check_in_time.strftime('%I:%M:%S %p')
+
         return {
             'id': self.id,
             'student_id': self.student_id,
             'register_number': self.student.register_number if self.student else None,
+            'regNo': self.student.register_number if self.student else None,
             'student_name': self.student.full_name if self.student else None,
+            'name': self.student.full_name if self.student else None,
             'department': self.student.department if self.student else None,
+            'dept': self.student.department if self.student else None,
             'class_year': self.student.class_year if self.student else None,
+            'classYear': self.student.class_year if self.student else None,
+            'email': self.student.email if self.student else None,
+            'phone_number': self.student.phone_number if self.student else None,
+            'photo': self.student.photo_filename if self.student else None,
             'session_id': self.session_id,
             'session_name': self.session.session_name if self.session else None,
             'attendance_date': self.attendance_date.strftime('%Y-%m-%d') if self.attendance_date else None,
-            'check_in_time': self.check_in_time.strftime('%H:%M:%S') if self.check_in_time else None,
+            'check_in_time': ist_time_str or (self.check_in_time.strftime('%H:%M:%S') if self.check_in_time else None),
+            'check_in_timestamp': self.check_in_timestamp.isoformat() if self.check_in_timestamp else None,
             'status': self.status,
             'verification_method': self.verification_method,
             'confidence': round(self.confidence_or_distance, 4) if self.confidence_or_distance is not None else None,
             'is_manually_corrected': self.is_manually_corrected,
             'correction_note': self.correction_note,
-            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None
         }
 
 

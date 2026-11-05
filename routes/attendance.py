@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, current_app
 from datetime import datetime, date, time
-from models import db, Student, FaceEncoding, ClassSession, Attendance
+from models import db, Student, FaceEncoding, ClassSession, Attendance, get_utc_now, get_ist_now, to_ist, IST
 from services.face_engine import face_engine
 from config import Config
 
@@ -132,6 +132,16 @@ def verify_attendance():
             'bbox': bbox
         })
 
+    # Handle ambiguous match
+    if match_status == 'AMBIGUOUS_MATCH':
+        return jsonify({
+            'success': False,
+            'status': 'AMBIGUOUS_MATCH',
+            'message': 'Verification ambiguous between multiple registered members. Please adjust lighting and face camera directly.',
+            'confidence': round(similarity_score * 100, 1),
+            'bbox': bbox
+        })
+
     # Handle no match
     if match_status == 'NO_MATCH' or matched_student is None:
         return jsonify({
@@ -143,12 +153,15 @@ def verify_attendance():
         })
 
     # 7. Match Successful - Identify Class Session
-    today = date.today()
+    now_ist = get_ist_now()
+    now_utc = get_utc_now()
+    today_ist = now_ist.date()
+
     if session_id:
         target_session = db.session.get(ClassSession, session_id)
     else:
         # Auto-resolve session
-        target_session = ClassSession.query.filter_by(session_date=today, is_active=True).first()
+        target_session = ClassSession.query.filter_by(session_date=today_ist, is_active=True).first()
         if not target_session:
             target_session = ClassSession.query.filter_by(is_active=True).first()
 
@@ -159,45 +172,62 @@ def verify_attendance():
             'message': 'No active class session available for attendance recording.'
         })
 
+    def build_student_dict(student_obj, att_date_str):
+        return {
+            'id': student_obj.id,
+            'name': student_obj.full_name,
+            'full_name': student_obj.full_name,
+            'register_number': student_obj.register_number,
+            'regNo': student_obj.register_number,
+            'department': student_obj.department,
+            'dept': student_obj.department,
+            'class_year': student_obj.class_year,
+            'classYear': student_obj.class_year,
+            'email': student_obj.email or f"{student_obj.register_number.lower()}@university.edu",
+            'phone_number': student_obj.phone_number or "+91 98765 43210",
+            'attendance_date': att_date_str,
+            'status': 'PRESENT',
+            'photo': student_obj.photo_filename,
+            'photo_filename': student_obj.photo_filename
+        }
+
     # 8. Server-Side Duplicate Check: Ensure student receives attendance ONLY ONCE per session
     existing_attendance = Attendance.query.filter_by(
         student_id=matched_student.id,
         session_id=target_session.id,
-        attendance_date=today
+        attendance_date=today_ist
     ).first()
 
     if existing_attendance:
+        existing_time_str = None
+        if existing_attendance.check_in_timestamp:
+            existing_time_str = to_ist(existing_attendance.check_in_timestamp).strftime('%I:%M:%S %p')
+        elif existing_attendance.check_in_time:
+            existing_time_str = existing_attendance.check_in_time.strftime('%I:%M:%S %p')
+        else:
+            existing_time_str = now_ist.strftime('%I:%M:%S %p')
+
         return jsonify({
             'success': True,
             'status': 'ALREADY_MARKED',
             'already_marked': True,
-            'message': f'Attendance already recorded for {matched_student.full_name} ({matched_student.register_number}) in this session at {existing_attendance.check_in_time.strftime("%I:%M %p")}.',
-            'student': {
-                'id': matched_student.id,
-                'name': matched_student.full_name,
-                'register_number': matched_student.register_number,
-                'department': matched_student.department,
-                'class_year': matched_student.class_year,
-                'email': matched_student.email or f"{matched_student.register_number.lower()}@university.edu",
-                'phone_number': matched_student.phone_number or "+91 98765 43210",
-                'attendance_date': today.strftime('%Y-%m-%d'),
-                'status': 'PRESENT',
-                'photo': matched_student.photo_filename
-            },
+            'message': f'Attendance already recorded for {matched_student.full_name} ({matched_student.register_number}) in this session at {existing_time_str}.',
+            'student': build_student_dict(matched_student, today_ist.strftime('%Y-%m-%d')),
             'session_name': target_session.session_name,
-            'check_in_time': existing_attendance.check_in_time.strftime('%I:%M:%S %p'),
-            'confidence': round(existing_attendance.confidence_or_distance * 100, 1) if existing_attendance.confidence_or_distance else 95.0,
+            'check_in_time': existing_time_str,
+            'check_in_timestamp': existing_attendance.check_in_timestamp.isoformat() if existing_attendance.check_in_timestamp else None,
+            'confidence': round(existing_attendance.confidence_or_distance * 100, 1) if existing_attendance.confidence_or_distance else round(similarity_score * 100, 1),
             'emotion': dominant_emotion,
             'bbox': bbox
         })
 
     # 9. Record New Attendance in Database
-    now = datetime.now()
     new_attendance = Attendance(
         student_id=matched_student.id,
         session_id=target_session.id,
-        attendance_date=today,
-        check_in_time=now.time(),
+        attendance_date=today_ist,
+        check_in_time=now_ist.time(),
+        check_in_timestamp=now_utc,
         status='Present',
         verification_method='Face Recognition (YuNet + SFace)',
         confidence_or_distance=similarity_score
@@ -212,58 +242,40 @@ def verify_attendance():
         existing_attendance = Attendance.query.filter_by(
             student_id=matched_student.id,
             session_id=target_session.id,
-            attendance_date=today
+            attendance_date=today_ist
         ).first()
         if existing_attendance:
+            existing_time_str = to_ist(existing_attendance.check_in_timestamp).strftime('%I:%M:%S %p') if existing_attendance.check_in_timestamp else existing_attendance.check_in_time.strftime('%I:%M:%S %p')
             return jsonify({
                 'success': True,
                 'status': 'ALREADY_MARKED',
                 'already_marked': True,
-                'message': f'Attendance already recorded at {existing_attendance.check_in_time.strftime("%I:%M %p")}.',
-                'student': {
-                    'id': matched_student.id,
-                    'name': matched_student.full_name,
-                    'register_number': matched_student.register_number,
-                    'department': matched_student.department,
-                    'class_year': matched_student.class_year,
-                    'email': matched_student.email or f"{matched_student.register_number.lower()}@university.edu",
-                    'phone_number': matched_student.phone_number or "+91 98765 43210",
-                    'attendance_date': today.strftime('%Y-%m-%d'),
-                    'status': 'PRESENT',
-                    'photo': matched_student.photo_filename
-                },
+                'message': f'Attendance already recorded at {existing_time_str}.',
+                'student': build_student_dict(matched_student, today_ist.strftime('%Y-%m-%d')),
                 'session_name': target_session.session_name,
-                'check_in_time': existing_attendance.check_in_time.strftime('%I:%M:%S %p'),
+                'check_in_time': existing_time_str,
+                'check_in_timestamp': existing_attendance.check_in_timestamp.isoformat() if existing_attendance.check_in_timestamp else None,
                 'confidence': round(similarity_score * 100, 1),
                 'emotion': dominant_emotion,
                 'bbox': bbox
             })
         return jsonify({
             'success': False,
-            'status': 'ERROR',
+            'status': 'DATABASE_ERROR',
             'message': f'Database error while recording attendance: {str(e)}'
         }), 500
 
-    # 10. Return Clear Immediate Success Response
+    # 10. Return Clear Immediate Success Response with Complete Verified Information
+    time_str = now_ist.strftime('%I:%M:%S %p')
     return jsonify({
         'success': True,
         'status': 'SUCCESS',
         'already_marked': False,
         'message': f'Attendance successfully verified & recorded for {matched_student.full_name}!',
-        'student': {
-            'id': matched_student.id,
-            'name': matched_student.full_name,
-            'register_number': matched_student.register_number,
-            'department': matched_student.department,
-            'class_year': matched_student.class_year,
-            'email': matched_student.email or f"{matched_student.register_number.lower()}@university.edu",
-            'phone_number': matched_student.phone_number or "+91 98765 43210",
-            'attendance_date': today.strftime('%Y-%m-%d'),
-            'status': 'PRESENT',
-            'photo': matched_student.photo_filename
-        },
+        'student': build_student_dict(matched_student, today_ist.strftime('%Y-%m-%d')),
         'session_name': target_session.session_name,
-        'check_in_time': now.strftime('%I:%M:%S %p'),
+        'check_in_time': time_str,
+        'check_in_timestamp': now_utc.isoformat(),
         'confidence': round(similarity_score * 100, 1),
         'emotion': dominant_emotion,
         'bbox': bbox

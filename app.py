@@ -33,6 +33,21 @@ def create_app(config_override=None):
     # Initialize Database and default admin
     with app.app_context():
         db.create_all()
+
+        # Migrate SQLite columns if missing
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            if 'attendance' in inspector.get_table_names():
+                cols = [c['name'] for c in inspector.get_columns('attendance')]
+                if 'check_in_timestamp' not in cols:
+                    db.session.execute(text("ALTER TABLE attendance ADD COLUMN check_in_timestamp DATETIME"))
+                    db.session.commit()
+                if 'updated_at' not in cols:
+                    db.session.execute(text("ALTER TABLE attendance ADD COLUMN updated_at DATETIME"))
+                    db.session.commit()
+        except Exception as e:
+            print(f"[WARN] Column migration note: {e}")
         
         # Seed default admin if none exists
         if not Admin.query.filter_by(username='admin').first():

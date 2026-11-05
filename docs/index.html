@@ -440,12 +440,18 @@
                         </button>
                       </div>
 
-                      <div class="btn-group w-100 w-sm-auto">
-                        <button type="button" class="btn btn-primary px-4 fw-semibold shadow-sm flex-grow-1 btn-touch" id="scanBtn" onclick="scanFace()">
-                          <i class="bi bi-upc-scan me-1"></i> Scan Face Now
+                      <div class="d-flex flex-wrap gap-2 w-100 w-sm-auto">
+                        <button type="button" class="btn btn-success btn-sm px-3 fw-semibold shadow-sm" id="startCameraBtn" onclick="requestCameraAccess()" title="Start Camera Stream">
+                          <i class="bi bi-play-circle-fill me-1"></i> Start Camera
                         </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="requestCameraAccess()" title="Reconnect Camera">
-                          <i class="bi bi-arrow-clockwise"></i>
+                        <button type="button" class="btn btn-outline-danger btn-sm px-3 fw-semibold" id="stopCameraBtn" onclick="stopCameraStream()" title="Stop Camera Stream">
+                          <i class="bi bi-stop-circle-fill me-1"></i> Stop Camera
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-2" onclick="requestCameraAccess()" title="Restart Camera">
+                          <i class="bi bi-arrow-clockwise me-1"></i> Restart
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold shadow-sm flex-grow-1 btn-touch" id="scanBtn" onclick="scanFace()">
+                          <i class="bi bi-upc-scan me-1"></i> Scan Face Now
                         </button>
                       </div>
                     </div>
@@ -1188,8 +1194,8 @@
 
     // Purge any legacy demo artifacts (e.g. Lena Forsen or dummy test records) while preserving all user-added registered students
     const originalStudentCount = students.length;
-    students = students.filter(s => s && s.name !== 'Lena Forsen' && s.regNo !== 'DEMO001');
-    attendanceLogs = attendanceLogs.filter(l => l && l.name !== 'Lena Forsen' && l.regNo !== 'DEMO001');
+    students = students.filter(s => s && s.name !== 'Lena Forsen' && s.regNo !== 'DEMO001' && s.regNo !== 'CS2026001');
+    attendanceLogs = attendanceLogs.filter(l => l && l.name !== 'Lena Forsen' && l.regNo !== 'DEMO001' && l.regNo !== 'CS2026001');
     if (students.length !== originalStudentCount) {
       localStorage.setItem('bio_students', JSON.stringify(students));
       localStorage.setItem('bio_logs', JSON.stringify(attendanceLogs));
@@ -1213,12 +1219,107 @@
     const cameraErrorTitle = document.getElementById('cameraErrorTitle');
     const cameraErrorMessage = document.getElementById('cameraErrorMessage');
 
-    // Live Clock
-    setInterval(() => {
-      const now = new Date();
-      document.getElementById('liveClock').innerText = now.toLocaleTimeString();
-      document.getElementById('liveDate').innerText = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-    }, 1000);
+    // Real-Time Live Clock (IST - Asia/Kolkata timezone)
+    function updateLiveClock() {
+      try {
+        const now = new Date();
+        const timeFormatter = new Intl.DateTimeFormat('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        });
+        const dateFormatter = new Intl.DateTimeFormat('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+        const clockElem = document.getElementById('liveClock');
+        const dateElem = document.getElementById('liveDate');
+        if (clockElem) clockElem.innerText = timeFormatter.format(now);
+        if (dateElem) dateElem.innerText = dateFormatter.format(now);
+      } catch (e) {
+        console.warn("Clock formatting error:", e);
+      }
+    }
+    setInterval(updateLiveClock, 1000);
+    updateLiveClock();
+
+    function setCameraState(state, customMessage) {
+      const scanBtn = document.getElementById('scanBtn');
+      switch (state) {
+        case 'CAMERA_INITIALIZING':
+          cameraDot.className = "bi bi-camera-video-fill text-warning";
+          cameraStatus.innerText = customMessage || "Initializing Camera...";
+          cameraFooterStatus.innerText = "Connecting...";
+          cameraFooterStatus.className = "text-warning";
+          if (scanBtn) scanBtn.disabled = true;
+          break;
+        case 'CAMERA_READY':
+          cameraDot.className = "bi bi-camera-video-fill text-success";
+          cameraStatus.innerText = customMessage || (currentFacingMode === 'user' ? "Front Camera Ready" : "Rear Camera Ready");
+          cameraFooterStatus.innerText = "Camera Ready";
+          cameraFooterStatus.className = "text-success";
+          if (scanBtn) scanBtn.disabled = false;
+          break;
+        case 'CAMERA_SCANNING':
+          cameraDot.className = "bi bi-camera-video-fill text-primary";
+          cameraStatus.innerText = "Scanning Face...";
+          cameraFooterStatus.innerText = "Verifying...";
+          cameraFooterStatus.className = "text-primary";
+          break;
+        case 'CAMERA_DISCONNECTED':
+          cameraDot.className = "bi bi-camera-video-off-fill text-secondary";
+          cameraStatus.innerText = customMessage || "Camera Stopped";
+          cameraFooterStatus.innerText = "Camera Stopped";
+          cameraFooterStatus.className = "text-secondary";
+          if (scanBtn) scanBtn.disabled = true;
+          break;
+        case 'CAMERA_PERMISSION_DENIED':
+          cameraDot.className = "bi bi-camera-video-off-fill text-danger";
+          cameraStatus.innerText = "Permission Denied";
+          cameraFooterStatus.innerText = "Permission Denied";
+          cameraFooterStatus.className = "text-danger";
+          if (scanBtn) scanBtn.disabled = true;
+          break;
+        case 'CAMERA_NOT_FOUND':
+          cameraDot.className = "bi bi-camera-video-off-fill text-danger";
+          cameraStatus.innerText = "No Camera Detected";
+          cameraFooterStatus.innerText = "No Camera";
+          cameraFooterStatus.className = "text-danger";
+          if (scanBtn) scanBtn.disabled = true;
+          break;
+        case 'CAMERA_IN_USE':
+          cameraDot.className = "bi bi-camera-video-off-fill text-danger";
+          cameraStatus.innerText = "Camera in Use by Another App";
+          cameraFooterStatus.innerText = "Camera Busy";
+          cameraFooterStatus.className = "text-danger";
+          if (scanBtn) scanBtn.disabled = true;
+          break;
+        case 'CAMERA_ERROR':
+        default:
+          cameraDot.className = "bi bi-camera-video-off-fill text-danger";
+          cameraStatus.innerText = customMessage || "Camera Error";
+          cameraFooterStatus.innerText = "Camera Error";
+          cameraFooterStatus.className = "text-danger";
+          if (scanBtn) scanBtn.disabled = true;
+          break;
+      }
+    }
+
+    function stopCameraStream() {
+      if (activeMediaStream) {
+        try {
+          activeMediaStream.getTracks().forEach(t => t.stop());
+        } catch (e) {}
+        activeMediaStream = null;
+      }
+      video.srcObject = null;
+      setCameraState('CAMERA_DISCONNECTED');
+    }
 
     // =========================================================================
     // ROBUST CROSS-PLATFORM CAMERA ENGINE (MOBILE & DESKTOP)
@@ -1242,8 +1343,7 @@
       }
 
       cameraDeniedOverlay.classList.add('d-none');
-      cameraDot.className = "bi bi-camera-video-fill text-warning";
-      cameraStatus.innerText = "Connecting Camera...";
+      setCameraState('CAMERA_INITIALIZING', 'Connecting Camera...');
 
       // Mirror video only for front-facing camera
       if (currentFacingMode === 'user') {
@@ -1300,17 +1400,13 @@
 
       try {
         await video.play();
-        cameraDot.className = "bi bi-camera-video-fill text-success";
-        cameraStatus.innerText = currentFacingMode === 'user' ? "Front Camera Active" : "Rear Camera Active";
-        cameraFooterStatus.innerText = "Camera Active";
-        cameraFooterStatus.className = "text-success";
+        setCameraState('CAMERA_READY');
       } catch (playErr) {
         // Fallback for browsers that require user gesture for play
         video.onloadedmetadata = async () => {
           try {
             await video.play();
-            cameraDot.className = "bi bi-camera-video-fill text-success";
-            cameraStatus.innerText = "Camera Active";
+            setCameraState('CAMERA_READY');
           } catch (e) {
             console.warn("Autoplay blocked, waiting for tap:", e);
           }
@@ -1320,32 +1416,33 @@
 
     function handleCameraError(err) {
       console.error("Camera access failed:", err);
-      cameraDot.className = "bi bi-camera-video-off-fill text-danger";
-      cameraStatus.innerText = "Camera Blocked";
-      cameraFooterStatus.innerText = "Camera Blocked";
-      cameraFooterStatus.className = "text-danger";
 
       if (!err) {
+        setCameraState('CAMERA_ERROR', 'Camera Unavailable');
         showCameraError("Camera Unavailable", "Unable to establish camera connection. Please check device permissions.");
         return;
       }
 
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraState('CAMERA_PERMISSION_DENIED');
         showCameraError(
           "Camera Permission Denied",
-          "Your browser blocked camera access. Please tap the lock/info icon in your browser address bar and change Camera to 'Allow', then retry."
+          "Your browser blocked camera access. Please tap the lock/info icon in your browser address bar and change Camera to 'Allow', then click 'Start Camera'."
         );
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setCameraState('CAMERA_NOT_FOUND');
         showCameraError(
           "No Camera Detected",
-          "No camera hardware was found on this device. You can test face recognition using the demo mode below."
+          "No camera hardware was found on this device. Please connect a webcam or enable camera in device settings."
         );
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setCameraState('CAMERA_IN_USE');
         showCameraError(
           "Camera Already in Use",
-          "Another app (like Zoom, Teams, or another browser tab) is currently using the camera. Please close it and retry."
+          "Another app (like Zoom, Teams, or another browser tab) is currently using the camera. Please close it and click 'Start Camera'."
         );
       } else {
+        setCameraState('CAMERA_ERROR', 'Camera Error');
         showCameraError(
           "Camera Access Error",
           err.message || "An unexpected error occurred while accessing the camera."
@@ -1891,24 +1988,42 @@
 
       // 6. Match Verified! Populate Details Card and Display ONLY Recognized Person's Details
       const todayDateStr = new Date().toISOString().slice(0, 10);
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const timeStr = new Intl.DateTimeFormat('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      }).format(new Date());
+
       const sessSelect = document.getElementById('sessionSelect');
       const sessionName = (sessSelect && sessSelect.selectedOptions && sessSelect.selectedOptions.length > 0)
         ? sessSelect.selectedOptions[0].text
         : 'General Session';
 
-      // Count prior scans for this registered person today
+      // Count prior scans for this registered person today in this session
       const priorScansToday = attendanceLogs.filter(l => 
         (String(l.studentId) === String(matched.id) || l.regNo === matched.regNo) &&
-        (l.date === todayDateStr)
+        (l.date === todayDateStr) &&
+        (l.session === sessionName || !l.session)
       );
 
-      // Debounce: prevent accidental duplicate within 2.5s
-      const lastScanForStudent = attendanceLogs.find(l => (String(l.studentId) === String(matched.id) || l.regNo === matched.regNo));
-      const isAccidentalRapidClick = lastScanForStudent && (Date.now() - (lastScanForStudent.timestamp || 0) < 2500);
+      if (priorScansToday.length > 0) {
+        // Duplicate attendance check: Prevent duplicate and preserve original check-in timestamp
+        resultBox.className = 'result-box text-start p-3 rounded-3 bg-primary-subtle border border-primary-subtle text-primary';
+        document.getElementById('resultIcon').innerHTML = '<i class="bi bi-info-circle-fill text-primary"></i>';
+        document.getElementById('resultTitle').innerText = 'Attendance Already Marked';
+        document.getElementById('resultSubtitle').innerText = `${matched.name} | ${sessionName}`;
+        document.getElementById('resMessage').innerText = `Attendance was already recorded for ${matched.name} (${matched.regNo}) today at ${priorScansToday[0].time}. Duplicate entry prevented.`;
+        playBeep('info');
+      } else {
+        // Record brand new attendance
+        resultBox.className = 'result-box text-start p-3 rounded-3 bg-success-subtle border border-success-subtle text-success';
+        document.getElementById('resultIcon').innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+        document.getElementById('resultTitle').innerText = 'Attendance Verified!';
+        document.getElementById('resultSubtitle').innerText = `${matched.name} | Face ID: ${matched.regNo}`;
+        document.getElementById('resMessage').innerText = `Biometric match confirmed (${(matchScore * 100).toFixed(1)}% similarity). Attendance recorded at ${timeStr}.`;
 
-      if (!isAccidentalRapidClick) {
-        // Record new attendance entry linked to the correct registered person's name and Face ID
         const newLogEntry = {
           id: Date.now(),
           timestamp: Date.now(),
@@ -1919,7 +2034,6 @@
           date: todayDateStr,
           session: sessionName,
           time: timeStr,
-          scanCount: priorScansToday.length + 1,
           status: 'Present',
           conf: `${(matchScore * 100).toFixed(1)}%`,
           method: 'Biometric Face Recognition'
@@ -1927,22 +2041,8 @@
 
         attendanceLogs.unshift(newLogEntry);
         localStorage.setItem('bio_logs', JSON.stringify(attendanceLogs));
+        playBeep('success');
       }
-
-      // UI Confirmation Box styling
-      resultBox.className = 'result-box text-start p-3 rounded-3 bg-success-subtle border border-success-subtle text-success';
-      document.getElementById('resultIcon').innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
-
-      if (priorScansToday.length > 0) {
-        document.getElementById('resultTitle').innerText = 'Attendance Recorded (New Scan)';
-        document.getElementById('resultSubtitle').innerText = `${matched.name} | Face ID: ${matched.regNo}`;
-        document.getElementById('resMessage').innerText = `Re-scan recorded at ${timeStr}. (Scan #${priorScansToday.length + 1} today)`;
-      } else {
-        document.getElementById('resultTitle').innerText = 'Attendance Verified!';
-        document.getElementById('resultSubtitle').innerText = `${matched.name} | Face ID: ${matched.regNo}`;
-        document.getElementById('resMessage').innerText = `Biometric match confirmed (${(matchScore * 100).toFixed(1)}% similarity). Attendance recorded at ${timeStr}.`;
-      }
-      playBeep('success');
 
       // Display Matched Student's Registered Photo & Info ONLY (Zero Blanks / Zero Placeholders)
       const avatarWrapper = document.getElementById('resAvatarWrapper');
@@ -1955,6 +2055,7 @@
       // Safe fallback computation to guarantee 0 blanks / 0 missing data from portal registration
       const studentEmail = matched.email || (matched.regNo ? `${matched.regNo.toLowerCase()}@university.edu` : 'student@university.edu');
       const studentPhone = matched.phone || '+91 98765 43210';
+      const recordedTime = (priorScansToday.length > 0 && priorScansToday[0].time) ? priorScansToday[0].time : timeStr;
 
       document.getElementById('resName').innerText = matched.name;
       document.getElementById('resRegNo').innerText = `Register No / User ID: ${matched.regNo}`;
@@ -1969,7 +2070,7 @@
       if (document.getElementById('resDate')) {
         document.getElementById('resDate').innerText = todayDateStr;
       }
-      document.getElementById('resTime').innerText = timeStr;
+      document.getElementById('resTime').innerText = recordedTime;
       const statusBadge = document.getElementById('resStatusBadge');
       if (statusBadge) {
         statusBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>PRESENT';
@@ -1988,16 +2089,6 @@
       }
       resultBox.classList.remove('d-none');
       resultBox.style.display = 'block';
-
-      // Refresh other tabs
-      renderLogs();
-      renderAdmin();
-      if (!document.getElementById('studentTab').classList.contains('d-none')) {
-        renderStudentPortal();
-      }
-
-      isScanning = false;
-    }
 
       // Refresh other tabs
       renderLogs();
@@ -2406,6 +2497,7 @@
 
       renderStudents();
       renderAdmin();
+      updateKioskStudentDropdown();
       alert(`Student ${name} (${reg}) registered successfully!`);
     }
 
@@ -2567,6 +2659,7 @@
       renderStudents();
       renderAdmin();
       renderLogs();
+      updateKioskStudentDropdown();
       if (!document.getElementById('studentTab').classList.contains('d-none')) {
         renderStudentPortal();
       }
@@ -2583,6 +2676,7 @@
       renderStudents();
       renderAdmin();
       renderLogs();
+      updateKioskStudentDropdown();
       if (!document.getElementById('studentTab').classList.contains('d-none')) {
         renderStudentPortal();
       }
@@ -2602,6 +2696,7 @@
       renderStudents();
       renderAdmin();
       renderLogs();
+      updateKioskStudentDropdown();
       if (!document.getElementById('studentTab').classList.contains('d-none')) {
         renderStudentPortal();
       }

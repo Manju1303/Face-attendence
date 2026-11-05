@@ -237,28 +237,31 @@ class FaceEngine:
 
         return float(np.dot(vec1, vec2) / (norm1 * norm2))
 
-    def find_best_match(self, query_embedding, enrolled_students, threshold=0.60, uncertainty_margin=0.08):
+    def find_best_match(self, query_embedding, enrolled_students, threshold=0.60, uncertainty_margin=0.08, ambiguity_margin=0.05):
         """
         Compares query_embedding against all active students' enrolled samples.
-        Parameters:
-            query_embedding: list of 128 floats
-            enrolled_students: list of Student model instances with their FaceEncoding relations
-            threshold: minimum cosine similarity required for match (e.g. 0.60)
-            uncertainty_margin: uncertainty zone (threshold - margin to threshold)
+        Strict verification:
+          - Rejects inactive students
+          - Checks top match meets calibrated threshold
+          - Checks ambiguity: rejects if top two matching students have similarity difference < ambiguity_margin
+          - Rejects uncertain and unknown faces
         Returns:
-            match_status: 'MATCH' | 'UNCERTAIN' | 'NO_MATCH'
+            match_status: 'MATCH' | 'AMBIGUOUS_MATCH' | 'UNCERTAIN' | 'NO_MATCH'
             matched_student: Student instance or None
             highest_score: float (highest similarity found)
-            candidate_student: Student instance if uncertain or None
+            candidate_student: Student instance if candidate found or None
         """
         if not enrolled_students or not query_embedding:
             return 'NO_MATCH', None, 0.0, None
 
         best_score = -1.0
         best_student = None
+        second_best_score = -1.0
+        second_best_student = None
 
         for student in enrolled_students:
-            if not student.active_status:
+            # Enforce active student check
+            if not getattr(student, 'active_status', True):
                 continue
             for enc in student.encodings:
                 emb = enc.get_embedding()
@@ -266,8 +269,14 @@ class FaceEngine:
                     continue
                 score = self.compute_similarity(query_embedding, emb)
                 if score > best_score:
+                    if best_student is not None and best_student.id != student.id:
+                        second_best_score = best_score
+                        second_best_student = best_student
                     best_score = score
                     best_student = student
+                elif score > second_best_score and student.id != (best_student.id if best_student else None):
+                    second_best_score = score
+                    second_best_student = student
 
         if best_student is None or best_score <= 0.0:
             return 'NO_MATCH', None, 0.0, None
@@ -275,6 +284,13 @@ class FaceEngine:
         uncertain_floor = max(0.0, threshold - uncertainty_margin)
 
         if best_score >= threshold:
+            # Check for ambiguity between two different students
+            if second_best_student is not None and (best_score - second_best_score) < ambiguity_margin:
+                logger.warning(
+                    f"Ambiguous biometric match between Student {best_student.id} ({best_score:.3f}) "
+                    f"and Student {second_best_student.id} ({second_best_score:.3f})"
+                )
+                return 'AMBIGUOUS_MATCH', None, best_score, best_student
             return 'MATCH', best_student, best_score, None
         elif best_score >= uncertain_floor:
             # Score is in the uncertain range
