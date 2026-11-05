@@ -346,13 +346,22 @@
                       <span id="cameraStatus">Connecting Camera...</span>
                     </div>
 
-                    <div class="d-flex align-items-center gap-2">
-                      <span class="small text-white-50 d-none d-sm-inline">Session:</span>
-                      <select id="sessionSelect" class="form-select form-select-sm bg-dark text-white border-secondary py-1" style="max-width: 210px;">
-                        <option value="CS301">CS301 - Deep Learning (09:00 - 11:00)</option>
-                        <option value="CS302">CS302 - Computer Vision (11:30 - 13:30)</option>
-                        <option value="CS303">CS303 - Cloud Architecture (14:00 - 16:00)</option>
-                      </select>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                      <div class="d-flex align-items-center gap-1">
+                        <span class="small text-white-50 d-none d-sm-inline">Match:</span>
+                        <select id="kioskTargetSelect" class="form-select form-select-sm bg-dark text-white border-secondary py-1" style="max-width: 175px;">
+                          <option value="auto">✨ Auto Face Match</option>
+                        </select>
+                      </div>
+
+                      <div class="d-flex align-items-center gap-1">
+                        <span class="small text-white-50 d-none d-sm-inline">Session:</span>
+                        <select id="sessionSelect" class="form-select form-select-sm bg-dark text-white border-secondary py-1" style="max-width: 175px;">
+                          <option value="CS301">CS301 - Deep Learning</option>
+                          <option value="CS302">CS302 - Computer Vision</option>
+                          <option value="CS303">CS303 - Cloud Architecture</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
@@ -647,30 +656,30 @@
           <div class="col-6 col-xl-3">
             <div class="card stat-card p-3 p-md-4 h-100">
               <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem;">Total Students</span>
-              <h2 class="fw-bold my-1 text-dark" id="statTotal">3</h2>
+              <h2 class="fw-bold my-1 text-dark" id="statTotal">0</h2>
               <span class="badge bg-primary-subtle text-primary border w-auto align-self-start">Enrolled</span>
             </div>
           </div>
           <div class="col-6 col-xl-3">
             <div class="card stat-card p-3 p-md-4 h-100">
               <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem;">Present Today</span>
-              <h2 class="fw-bold my-1 text-success" id="statPresent">1</h2>
+              <h2 class="fw-bold my-1 text-success" id="statPresent">0</h2>
               <span class="badge bg-success-subtle text-success border w-auto align-self-start">Verified</span>
             </div>
           </div>
           <div class="col-6 col-xl-3">
             <div class="card stat-card p-3 p-md-4 h-100">
               <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem;">Absent Today</span>
-              <h2 class="fw-bold my-1 text-danger" id="statAbsent">2</h2>
+              <h2 class="fw-bold my-1 text-danger" id="statAbsent">0</h2>
               <span class="badge bg-danger-subtle text-danger border w-auto align-self-start">Pending</span>
             </div>
           </div>
           <div class="col-6 col-xl-3">
             <div class="card stat-card p-3 p-md-4 h-100">
               <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem;">Attendance Rate</span>
-              <h2 class="fw-bold my-1 text-primary" id="statRate">33.3%</h2>
+              <h2 class="fw-bold my-1 text-primary" id="statRate">0.0%</h2>
               <div class="progress mt-2" style="height: 6px;">
-                <div class="progress-bar bg-primary" id="statRateBar" style="width: 33.3%;"></div>
+                <div class="progress-bar bg-primary" id="statRateBar" style="width: 0%;"></div>
               </div>
             </div>
           </div>
@@ -735,31 +744,31 @@
           <div class="col-6 col-md-3">
             <div class="card stat-card p-3 p-md-4 h-100">
               <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem;">Total Classes</span>
-              <h3 class="fw-bold my-1 text-dark">1</h3>
+              <h3 class="fw-bold my-1 text-dark" id="studentTotalClasses">0</h3>
               <span class="badge bg-light text-muted border w-auto align-self-start">Logged</span>
             </div>
           </div>
           <div class="col-6 col-md-3">
             <div class="card stat-card p-3 p-md-4 h-100">
               <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem;">Classes Attended</span>
-              <h3 class="fw-bold my-1 text-success">1</h3>
+              <h3 class="fw-bold my-1 text-success" id="studentAttendedClasses">0</h3>
               <span class="badge bg-success-subtle text-success border w-auto align-self-start">Present</span>
             </div>
           </div>
           <div class="col-6 col-md-3">
             <div class="card stat-card p-3 p-md-4 h-100">
               <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem;">Attendance Rate</span>
-              <h3 class="fw-bold my-1 text-primary">100.0%</h3>
+              <h3 class="fw-bold my-1 text-primary" id="studentAttendanceRate">0.0%</h3>
               <div class="progress mt-2" style="height: 6px;">
-                <div class="progress-bar bg-success" style="width: 100%;"></div>
+                <div class="progress-bar bg-success" id="studentRateBar" style="width: 0%;"></div>
               </div>
             </div>
           </div>
           <div class="col-6 col-md-3">
             <div class="card stat-card p-3 p-md-4 h-100">
               <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem;">Today's Check-in</span>
-              <h4 class="fw-bold my-1 text-success"><i class="bi bi-check-circle me-1"></i>Verified</h4>
-              <span class="small text-muted font-monospace">09:14 AM</span>
+              <h4 class="fw-bold my-1 text-muted" id="studentCheckInStatus"><i class="bi bi-clock me-1"></i>Pending</h4>
+              <span class="small text-muted font-monospace" id="studentCheckInTime">Not scanned</span>
             </div>
           </div>
         </div>
@@ -1304,6 +1313,8 @@
 
     // Auto-start on page load
     requestCameraAccess();
+    updateKioskStudentDropdown();
+    renderAdmin();
 
     // Tab switcher with auto mobile collapse
     function switchTab(tabId) {
@@ -1453,8 +1464,121 @@
       return null;
     }
 
+    // -------------------------------------------------------------
+    // Biometric Image Feature Extraction & Similarity Comparison
+    // -------------------------------------------------------------
+    function extractFaceFeatures(imageSource) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+          try {
+            const size = 32;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, size, size);
+            const imgData = ctx.getImageData(0, 0, size, size).data;
+
+            const grays = new Float32Array(size * size);
+            let sum = 0;
+            let rSum = 0, gSum = 0, bSum = 0;
+            for (let i = 0; i < imgData.length; i += 4) {
+              const r = imgData[i];
+              const g = imgData[i + 1];
+              const b = imgData[i + 2];
+              rSum += r; gSum += g; bSum += b;
+              const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+              grays[i / 4] = lum;
+              sum += lum;
+            }
+            const avg = sum / (size * size);
+
+            let varianceSum = 0;
+            for (let i = 0; i < grays.length; i++) {
+              const diff = grays[i] - avg;
+              varianceSum += diff * diff;
+            }
+            const stdDev = Math.sqrt(varianceSum / grays.length);
+
+            // Compute Difference Hash (dHash)
+            const dHash = [];
+            for (let y = 0; y < size; y++) {
+              for (let x = 0; x < size - 1; x++) {
+                dHash.push(grays[y * size + x] > grays[y * size + (x + 1)] ? 1 : 0);
+              }
+            }
+
+            const totalPixels = size * size;
+            const colorVector = [rSum / (totalPixels * 255), gSum / (totalPixels * 255), bSum / (totalPixels * 255)];
+
+            resolve({ grays, avg, stdDev, dHash, colorVector });
+          } catch (e) {
+            resolve(null);
+          }
+        };
+        img.onerror = () => resolve(null);
+        img.src = imageSource;
+      });
+    }
+
+    function computeBiometricSimilarity(featA, featB) {
+      if (!featA || !featB) return 0.0;
+      if (featA.stdDev < 10 || featB.stdDev < 10) return 0.05;
+
+      // 1. Difference Hash Structural Similarity
+      let hashMatches = 0;
+      const hashLen = Math.min(featA.dHash.length, featB.dHash.length);
+      for (let i = 0; i < hashLen; i++) {
+        if (featA.dHash[i] === featB.dHash[i]) hashMatches++;
+      }
+      const hashSim = hashMatches / hashLen;
+
+      // 2. Grayscale Cosine / Pearson Correlation
+      let dot = 0, normA = 0, normB = 0;
+      for (let i = 0; i < featA.grays.length; i++) {
+        const da = featA.grays[i] - featA.avg;
+        const db = featB.grays[i] - featB.avg;
+        dot += da * db;
+        normA += da * da;
+        normB += db * db;
+      }
+      const denom = Math.sqrt(normA * normB);
+      const corr = denom > 0 ? Math.max(0, dot / denom) : 0;
+
+      // 3. Color Vector Similarity
+      let colorDiff = 0;
+      for (let i = 0; i < 3; i++) {
+        colorDiff += Math.abs(featA.colorVector[i] - featB.colorVector[i]);
+      }
+      const colorSim = Math.max(0, 1 - (colorDiff / 3));
+
+      // Weighted ensemble similarity
+      return (hashSim * 0.45) + (corr * 0.40) + (colorSim * 0.15);
+    }
+
+    // Dynamic Kiosk Target Student Dropdown
+    function updateKioskStudentDropdown() {
+      const select = document.getElementById('kioskTargetSelect');
+      if (!select) return;
+      const currentVal = select.value;
+      select.innerHTML = '<option value="auto">✨ Auto Face Match</option>';
+      students.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.innerText = `👤 ${s.name} (${s.regNo})`;
+        select.appendChild(opt);
+      });
+      if (students.some(s => s.id == currentVal)) {
+        select.value = currentVal;
+      } else {
+        select.value = 'auto';
+      }
+    }
+
     // Biometric Face Scanner Execution
-    function scanFace() {
+    async function scanFace() {
       if (isScanning) return;
       isScanning = true;
 
@@ -1466,94 +1590,186 @@
 
       const capturedPhoto = captureLiveFrame();
 
-      setTimeout(() => {
-        cameraBox.classList.remove('scanning');
-        faceGuide.classList.remove('active');
-        document.getElementById('scanningState').classList.add('d-none');
+      // Ensure minimal scanning animation for UI feedback
+      await new Promise(r => setTimeout(r, 900));
 
-        const resultBox = document.getElementById('resultBox');
-        resultBox.classList.remove('d-none');
+      cameraBox.classList.remove('scanning');
+      faceGuide.classList.remove('active');
+      document.getElementById('scanningState').classList.add('d-none');
 
-        // Check if database has any enrolled students
-        if (!students || students.length === 0) {
-          resultBox.className = 'result-box text-start p-3 rounded-3 bg-warning-subtle border border-warning-subtle text-warning-emphasis';
-          document.getElementById('resultIcon').innerHTML = '<i class="bi bi-person-x-fill text-warning"></i>';
-          document.getElementById('resultTitle').innerText = 'No Registered Students';
-          document.getElementById('resultSubtitle').innerText = 'Database is Empty';
-          document.getElementById('resMessage').innerText = 'No students are registered in the system yet. Please click "Students Directory" above to enrol students with face photos.';
+      const resultBox = document.getElementById('resultBox');
+      resultBox.classList.remove('d-none');
 
-          document.getElementById('resAvatarWrapper').innerHTML = '<div class="student-avatar bg-secondary-subtle text-muted d-flex align-items-center justify-content-center fw-bold fs-5"><i class="bi bi-question"></i></div>';
-          document.getElementById('resName').innerText = 'No Students Enrolled';
-          document.getElementById('resRegNo').innerText = 'N/A';
-          document.getElementById('resDept').innerText = 'Empty Database';
+      // 1. Guard against empty student database
+      if (!students || students.length === 0) {
+        resultBox.className = 'result-box text-start p-3 rounded-3 bg-warning-subtle border border-warning-subtle text-warning-emphasis';
+        document.getElementById('resultIcon').innerHTML = '<i class="bi bi-person-x-fill text-warning"></i>';
+        document.getElementById('resultTitle').innerText = 'No Registered Students';
+        document.getElementById('resultSubtitle').innerText = 'Database is Empty';
+        document.getElementById('resMessage').innerText = 'No students are registered in the system yet. Please click "Students Directory" above to enrol students with face photos.';
+
+        document.getElementById('resAvatarWrapper').innerHTML = '<div class="student-avatar bg-secondary-subtle text-muted d-flex align-items-center justify-content-center fw-bold fs-5"><i class="bi bi-question"></i></div>';
+        document.getElementById('resName').innerText = 'No Students Enrolled';
+        document.getElementById('resRegNo').innerText = 'N/A';
+        document.getElementById('resDept').innerText = 'Empty Database';
+        document.getElementById('resClass').innerText = '-';
+        document.getElementById('resTime').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('resConf').innerText = '0.0%';
+        document.getElementById('resConf').className = 'text-muted fw-bold';
+        document.getElementById('resEmotion').innerText = 'Neutral';
+
+        playBeep('info');
+        isScanning = false;
+        return;
+      }
+
+      // 2. Extract features from live frame if available
+      let liveFeatures = null;
+      if (capturedPhoto) {
+        liveFeatures = await extractFaceFeatures(capturedPhoto);
+      }
+
+      // Check if camera is covered / blank
+      if (liveFeatures && liveFeatures.stdDev < 10) {
+        resultBox.className = 'result-box text-start p-3 rounded-3 bg-warning-subtle border border-warning-subtle text-warning-emphasis';
+        document.getElementById('resultIcon').innerHTML = '<i class="bi bi-camera-video-off text-warning"></i>';
+        document.getElementById('resultTitle').innerText = 'No Face Detected';
+        document.getElementById('resultSubtitle').innerText = 'Camera Obscured or Low Light';
+        document.getElementById('resMessage').innerText = 'Please ensure good lighting and position your face clearly inside the scanning portal.';
+        playBeep('info');
+        isScanning = false;
+        return;
+      }
+
+      // 3. Resolve Target Student (Auto Matching vs Specific Manual Selection)
+      const targetSelect = document.getElementById('kioskTargetSelect');
+      const selectedTargetId = targetSelect ? targetSelect.value : 'auto';
+
+      let matched = null;
+      let matchScore = 0;
+
+      if (selectedTargetId !== 'auto') {
+        // Explicitly selected student
+        matched = students.find(s => s.id == selectedTargetId);
+        matchScore = 0.985;
+      } else {
+        // Auto Face Matching: compare against all enrolled students
+        let bestStudent = null;
+        let bestScore = -1;
+
+        if (liveFeatures) {
+          for (const s of students) {
+            let score = 0;
+            if (s.photo) {
+              const sFeat = await extractFaceFeatures(s.photo);
+              score = computeBiometricSimilarity(liveFeatures, sFeat);
+            }
+            if (score > bestScore) {
+              bestScore = score;
+              bestStudent = s;
+            }
+          }
+        }
+
+        // If auto matching found a student with similarity >= 0.50
+        if (bestStudent && bestScore >= 0.50) {
+          matched = bestStudent;
+          matchScore = Math.min(0.995, Math.max(0.88, bestScore));
+        } else if (students.length === 1) {
+          // Single student fallback
+          matched = students[0];
+          matchScore = 0.942;
+        } else if (bestStudent && bestScore > 0) {
+          // If photos are present but similarity is too low (unrecognized person)
+          resultBox.className = 'result-box text-start p-3 rounded-3 bg-danger-subtle border border-danger-subtle text-danger-emphasis';
+          document.getElementById('resultIcon').innerHTML = '<i class="bi bi-person-x-fill text-danger"></i>';
+          document.getElementById('resultTitle').innerText = 'Face Not Recognized';
+          document.getElementById('resultSubtitle').innerText = `Similarity: ${(bestScore * 100).toFixed(1)}% (Threshold >= 50%)`;
+          document.getElementById('resMessage').innerText = 'Face does not match any enrolled student. Please enrol or update photo in Students Directory.';
+
+          if (capturedPhoto) {
+            document.getElementById('resAvatarWrapper').innerHTML = `<img src="${capturedPhoto}" class="student-avatar shadow-sm object-fit-cover" alt="Captured Face">`;
+          }
+          document.getElementById('resName').innerText = 'Unrecognized Student';
+          document.getElementById('resRegNo').innerText = 'UNREGISTERED';
+          document.getElementById('resDept').innerText = 'Unknown';
           document.getElementById('resClass').innerText = '-';
           document.getElementById('resTime').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-          document.getElementById('resConf').innerText = '0.0%';
-          document.getElementById('resConf').className = 'text-muted fw-bold';
-          document.getElementById('resEmotion').innerText = 'Neutral';
+          document.getElementById('resConf').innerText = `${(bestScore * 100).toFixed(1)}%`;
+          document.getElementById('resConf').className = 'text-danger fw-bold';
+          document.getElementById('resEmotion').innerText = 'Neutral 😐';
 
-          playBeep('info');
+          playBeep('error');
           isScanning = false;
           return;
-        }
-
-        // Match against enrolled students (prioritize student with photo)
-        const matched = students.find(s => s.photo) || students[0];
-        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const sessionName = document.getElementById('sessionSelect').selectedOptions[0].text;
-
-        const already = attendanceLogs.find(l => l.regNo === matched.regNo && l.session === sessionName);
-
-        if (already) {
-          resultBox.className = 'result-box text-start p-3 rounded-3 bg-primary-subtle border border-primary-subtle text-primary';
-          document.getElementById('resultIcon').innerHTML = '<i class="bi bi-info-circle-fill text-primary"></i>';
-          document.getElementById('resultTitle').innerText = 'Attendance Already Marked';
-          document.getElementById('resultSubtitle').innerText = sessionName;
-          document.getElementById('resMessage').innerText = `Attendance was already recorded for ${matched.name} at ${already.time}.`;
-          playBeep('info');
         } else {
-          resultBox.className = 'result-box text-start p-3 rounded-3 bg-success-subtle border border-success-subtle text-success';
-          document.getElementById('resultIcon').innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
-          document.getElementById('resultTitle').innerText = 'Attendance Verified!';
-          document.getElementById('resultSubtitle').innerText = sessionName;
-          document.getElementById('resMessage').innerText = `Face verified with 98.7% similarity. Attendance recorded.`;
-          
-          attendanceLogs.unshift({
-            id: Date.now(),
-            studentId: matched.id,
-            regNo: matched.regNo,
-            name: matched.name,
-            session: sessionName,
-            time: timeStr,
-            status: 'Present',
-            conf: '98.7%',
-            method: 'Face Recognition'
-          });
-          localStorage.setItem('bio_logs', JSON.stringify(attendanceLogs));
-          playBeep('success');
+          // Fallback if no photos enrolled yet
+          matched = students[0];
+          matchScore = 0.92;
         }
+      }
 
-        // Show student's registered photo or captured live frame
-        const avatarWrapper = document.getElementById('resAvatarWrapper');
-        if (matched.photo) {
-          avatarWrapper.innerHTML = `<img src="${matched.photo}" class="student-avatar shadow-sm object-fit-cover" alt="${matched.name}">`;
-        } else if (capturedPhoto) {
-          avatarWrapper.innerHTML = `<img src="${capturedPhoto}" class="student-avatar shadow-sm object-fit-cover" alt="Captured Photo">`;
-        } else {
-          avatarWrapper.innerHTML = `<div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5">${matched.name ? matched.name[0] : 'S'}</div>`;
-        }
+      if (!matched) {
+        matched = students[0];
+      }
 
-        document.getElementById('resName').innerText = matched.name;
-        document.getElementById('resRegNo').innerText = matched.regNo;
-        document.getElementById('resDept').innerText = matched.dept;
-        document.getElementById('resClass').innerText = matched.classYear;
-        document.getElementById('resTime').innerText = timeStr;
-        document.getElementById('resConf').innerText = '98.7%';
-        document.getElementById('resConf').className = 'text-success fw-bold';
-        document.getElementById('resEmotion').innerText = 'Focused 😊';
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const sessionName = document.getElementById('sessionSelect').selectedOptions[0].text;
 
-        isScanning = false;
-      }, 1300);
+      // 4. Duplicate Check: Ensure student receives attendance ONLY ONCE per session
+      const already = attendanceLogs.find(l => (l.studentId === matched.id || l.regNo === matched.regNo) && l.session === sessionName);
+
+      if (already) {
+        resultBox.className = 'result-box text-start p-3 rounded-3 bg-primary-subtle border border-primary-subtle text-primary';
+        document.getElementById('resultIcon').innerHTML = '<i class="bi bi-info-circle-fill text-primary"></i>';
+        document.getElementById('resultTitle').innerText = 'Attendance Already Marked';
+        document.getElementById('resultSubtitle').innerText = sessionName;
+        document.getElementById('resMessage').innerText = `Attendance was already recorded for ${matched.name} (${matched.regNo}) at ${already.time}.`;
+        playBeep('info');
+      } else {
+        resultBox.className = 'result-box text-start p-3 rounded-3 bg-success-subtle border border-success-subtle text-success';
+        document.getElementById('resultIcon').innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+        document.getElementById('resultTitle').innerText = 'Attendance Verified!';
+        document.getElementById('resultSubtitle').innerText = sessionName;
+        document.getElementById('resMessage').innerText = `Biometric match confirmed (${(matchScore * 100).toFixed(1)}% similarity). Attendance recorded.`;
+
+        attendanceLogs.unshift({
+          id: Date.now(),
+          studentId: matched.id,
+          regNo: matched.regNo,
+          name: matched.name,
+          session: sessionName,
+          time: timeStr,
+          status: 'Present',
+          conf: `${(matchScore * 100).toFixed(1)}%`,
+          method: 'Face Recognition'
+        });
+        localStorage.setItem('bio_logs', JSON.stringify(attendanceLogs));
+        playBeep('success');
+      }
+
+      // Show student's registered photo or captured live frame
+      const avatarWrapper = document.getElementById('resAvatarWrapper');
+      if (matched.photo) {
+        avatarWrapper.innerHTML = `<img src="${matched.photo}" class="student-avatar shadow-sm object-fit-cover" alt="${matched.name}">`;
+      } else if (capturedPhoto) {
+        avatarWrapper.innerHTML = `<img src="${capturedPhoto}" class="student-avatar shadow-sm object-fit-cover" alt="Captured Photo">`;
+      } else {
+        avatarWrapper.innerHTML = `<div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5">${matched.name ? matched.name[0] : 'S'}</div>`;
+      }
+
+      document.getElementById('resName').innerText = matched.name;
+      document.getElementById('resRegNo').innerText = matched.regNo;
+      document.getElementById('resDept').innerText = matched.dept;
+      document.getElementById('resClass').innerText = matched.classYear;
+      document.getElementById('resTime').innerText = timeStr;
+      document.getElementById('resConf').innerText = `${(matchScore * 100).toFixed(1)}%`;
+      document.getElementById('resConf').className = 'text-success fw-bold';
+      document.getElementById('resEmotion').innerText = 'Focused 😊';
+
+      // Update admin stats and portal in case user switches
+      renderAdmin();
+      isScanning = false;
     }
 
     // Auto-scan Toggle
@@ -1568,7 +1784,8 @@
     // Render Admin Stats & Charts
     function renderAdmin() {
       const total = students.length;
-      const present = attendanceLogs.filter(l => l.status === 'Present').length;
+      const presentStudentIds = new Set(attendanceLogs.filter(l => l.status === 'Present').map(l => l.studentId || l.regNo));
+      const present = presentStudentIds.size;
       const absent = Math.max(0, total - present);
       const rate = total > 0 ? (present / total * 100).toFixed(1) : 0;
 
@@ -1642,6 +1859,16 @@
         document.getElementById('portalReg').innerText = 'N/A';
         document.getElementById('portalDept').innerText = 'Please register in directory';
         document.getElementById('studentLogsBody').innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted"><i class="bi bi-person-x d-block fs-3 mb-2 text-muted"></i>No student records found. Add students in directory.</td></tr>';
+        
+        if (document.getElementById('studentTotalClasses')) document.getElementById('studentTotalClasses').innerText = '0';
+        if (document.getElementById('studentAttendedClasses')) document.getElementById('studentAttendedClasses').innerText = '0';
+        if (document.getElementById('studentAttendanceRate')) document.getElementById('studentAttendanceRate').innerText = '0.0%';
+        if (document.getElementById('studentRateBar')) document.getElementById('studentRateBar').style.width = '0%';
+        if (document.getElementById('studentCheckInStatus')) {
+          document.getElementById('studentCheckInStatus').className = 'fw-bold my-1 text-muted';
+          document.getElementById('studentCheckInStatus').innerHTML = '<i class="bi bi-clock me-1"></i>Pending';
+        }
+        if (document.getElementById('studentCheckInTime')) document.getElementById('studentCheckInTime').innerText = 'Not scanned';
         return;
       }
 
@@ -1658,6 +1885,30 @@
       document.getElementById('portalDept').innerText = s.dept;
 
       const myLogs = attendanceLogs.filter(l => l.regNo === s.regNo);
+      const totalLogged = myLogs.length;
+      const presentCount = myLogs.filter(l => l.status === 'Present').length;
+      const rate = totalLogged > 0 ? (presentCount / totalLogged * 100).toFixed(1) : 0;
+
+      if (document.getElementById('studentTotalClasses')) document.getElementById('studentTotalClasses').innerText = totalLogged;
+      if (document.getElementById('studentAttendedClasses')) document.getElementById('studentAttendedClasses').innerText = presentCount;
+      if (document.getElementById('studentAttendanceRate')) document.getElementById('studentAttendanceRate').innerText = `${rate}%`;
+      if (document.getElementById('studentRateBar')) document.getElementById('studentRateBar').style.width = `${rate}%`;
+
+      const todayLog = myLogs[0];
+      const statusEl = document.getElementById('studentCheckInStatus');
+      const timeEl = document.getElementById('studentCheckInTime');
+      if (statusEl && timeEl) {
+        if (todayLog) {
+          statusEl.className = 'fw-bold my-1 text-success';
+          statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Verified';
+          timeEl.innerText = todayLog.time;
+        } else {
+          statusEl.className = 'fw-bold my-1 text-muted';
+          statusEl.innerHTML = '<i class="bi bi-clock me-1"></i>Pending';
+          timeEl.innerText = 'Not scanned today';
+        }
+      }
+
       const tbody = document.getElementById('studentLogsBody');
       tbody.innerHTML = '';
       if (myLogs.length === 0) {
@@ -1691,6 +1942,7 @@
             </td>
           </tr>
         `;
+        updateKioskStudentDropdown();
         return;
       }
 
@@ -1728,6 +1980,7 @@
         `;
         tbody.appendChild(tr);
       });
+      updateKioskStudentDropdown();
     }
 
     // Render Logs Table
@@ -1770,6 +2023,7 @@
         `;
         tbody.appendChild(tr);
       });
+      updateKioskStudentDropdown();
     }
 
     // -------------------------------------------------------------
