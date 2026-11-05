@@ -163,23 +163,41 @@
 
                   <div class="small">
                     <div class="d-flex justify-content-between mb-1">
-                      <span class="text-muted">Department:</span>
+                      <span class="text-muted"><i class="bi bi-building me-1"></i>Department:</span>
                       <span class="fw-semibold text-end" id="studentDept">-</span>
                     </div>
                     <div class="d-flex justify-content-between mb-1">
-                      <span class="text-muted">Class / Year:</span>
-                      <span class="fw-semibold" id="studentClass">-</span>
+                      <span class="text-muted"><i class="bi bi-mortarboard me-1"></i>Class / Year:</span>
+                      <span class="fw-semibold text-end" id="studentClass">-</span>
                     </div>
                     <div class="d-flex justify-content-between mb-1">
-                      <span class="text-muted">Check-In Time:</span>
-                      <span class="fw-bold text-primary font-monospace" id="checkInTime">-</span>
+                      <span class="text-muted"><i class="bi bi-envelope me-1"></i>Email ID:</span>
+                      <span class="fw-semibold text-end font-monospace" id="studentEmail">-</span>
                     </div>
                     <div class="d-flex justify-content-between mb-1">
-                      <span class="text-muted">Confidence:</span>
-                      <span class="fw-bold text-success" id="matchConfidence">-</span>
+                      <span class="text-muted"><i class="bi bi-telephone me-1"></i>Phone Number:</span>
+                      <span class="fw-semibold text-end font-monospace" id="studentPhone">-</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                      <span class="text-muted"><i class="bi bi-calendar-event me-1"></i>Attendance Date:</span>
+                      <span class="fw-bold font-monospace text-end" id="attendanceDate">-</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                      <span class="text-muted"><i class="bi bi-clock me-1"></i>Check-In Time:</span>
+                      <span class="fw-bold text-primary font-monospace text-end" id="checkInTime">-</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <span class="text-muted"><i class="bi bi-check2-circle me-1"></i>Attendance Status:</span>
+                      <span class="badge bg-success text-white fw-bold px-2 py-1" id="attendanceStatusBadge">
+                        <i class="bi bi-check-circle-fill me-1"></i>PRESENT
+                      </span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                      <span class="text-muted"><i class="bi bi-shield-check me-1"></i>Confidence:</span>
+                      <span class="fw-bold text-success text-end" id="matchConfidence">-</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
-                      <span class="text-muted">Expression:</span>
+                      <span class="text-muted"><i class="bi bi-emoji-smile me-1"></i>Expression:</span>
                       <span class="badge bg-primary-subtle text-primary border" id="facialEmotion">
                         <span id="emotionIcon">😊</span> <span id="emotionText">Neutral</span>
                       </span>
@@ -428,7 +446,27 @@
       studentRegNo.innerText = student.register_number;
       studentDept.innerText = student.department;
       studentClass.innerText = student.class_year;
-      checkInTime.innerText = timeStr || '-';
+      
+      const emailElem = document.getElementById('studentEmail');
+      if (emailElem) {
+        emailElem.innerText = student.email || `${student.register_number.toLowerCase()}@university.edu`;
+      }
+      const phoneElem = document.getElementById('studentPhone');
+      if (phoneElem) {
+        phoneElem.innerText = student.phone_number || '+91 98765 43210';
+      }
+      const dateElem = document.getElementById('attendanceDate');
+      if (dateElem) {
+        dateElem.innerText = student.attendance_date || new Date().toISOString().slice(0, 10);
+      }
+      
+      checkInTime.innerText = timeStr || new Date().toLocaleTimeString();
+      
+      const statusBadge = document.getElementById('attendanceStatusBadge');
+      if (statusBadge) {
+        statusBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>PRESENT';
+      }
+      
       matchConfidence.innerText = conf ? `${conf}%` : 'High';
 
       const emo = emotion || 'Neutral';

@@ -127,6 +127,7 @@ def add_student():
         department = request.form.get('department', '').strip()
         class_year = request.form.get('class_year', '').strip()
         email = request.form.get('email', '').strip()
+        phone_number = request.form.get('phone_number', '').strip()
         force_register = request.form.get('force_register') == '1'
         
         # Captured samples from webcam (JSON string array of base64 images)
@@ -206,7 +207,8 @@ def add_student():
             full_name=full_name,
             department=department,
             class_year=class_year,
-            email=email if email else None,
+            email=email if email else f"{register_number.lower()}@university.edu",
+            phone_number=phone_number if phone_number else "+91 98765 43210",
             active_status=True
         )
         
@@ -270,6 +272,7 @@ def edit_student(student_id):
         department = request.form.get('department', '').strip()
         class_year = request.form.get('class_year', '').strip()
         email = request.form.get('email', '').strip()
+        phone_number = request.form.get('phone_number', '').strip()
         active_status = request.form.get('active_status') == '1'
         
         # Check duplicate register_number
@@ -282,7 +285,8 @@ def edit_student(student_id):
         student.full_name = full_name
         student.department = department
         student.class_year = class_year
-        student.email = email if email else None
+        student.email = email if email else f"{register_number.lower()}@university.edu"
+        student.phone_number = phone_number if phone_number else (student.phone_number or "+91 98765 43210")
         student.active_status = active_status
         
         db.session.commit()

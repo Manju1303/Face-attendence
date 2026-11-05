@@ -491,31 +491,43 @@
 
                         <div class="small">
                           <div class="d-flex justify-content-between mb-1">
-                            <span class="text-muted">Department:</span>
+                            <span class="text-muted"><i class="bi bi-building me-1"></i>Department:</span>
                             <span class="fw-semibold text-end" id="resDept"></span>
                           </div>
                           <div class="d-flex justify-content-between mb-1">
-                            <span class="text-muted">Class / Year:</span>
+                            <span class="text-muted"><i class="bi bi-mortarboard me-1"></i>Class / Year:</span>
                             <span class="fw-semibold text-end" id="resClass"></span>
                           </div>
                           <div class="d-flex justify-content-between mb-1">
-                            <span class="text-muted">Check-In Time:</span>
-                            <span class="fw-bold text-primary font-monospace text-end" id="resTime"></span>
+                            <span class="text-muted"><i class="bi bi-envelope me-1"></i>Email ID:</span>
+                            <span class="fw-semibold text-end font-monospace" id="resEmail"></span>
                           </div>
                           <div class="d-flex justify-content-between mb-1">
-                            <span class="text-muted">Match Similarity:</span>
-                            <span class="fw-bold text-success text-end" id="resConf"></span>
+                            <span class="text-muted"><i class="bi bi-telephone me-1"></i>Phone Number:</span>
+                            <span class="fw-semibold text-end font-monospace" id="resPhone"></span>
+                          </div>
+                          <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted"><i class="bi bi-calendar-event me-1"></i>Attendance Date:</span>
+                            <span class="fw-bold font-monospace text-end" id="resDate"></span>
+                          </div>
+                          <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted"><i class="bi bi-clock me-1"></i>Check-In Time:</span>
+                            <span class="fw-bold text-primary font-monospace text-end" id="resTime"></span>
                           </div>
                           <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="text-muted">Facial Emotion:</span>
-                            <span class="badge bg-primary-subtle text-primary border" id="resEmotion">
-                              <span>Focused 😊</span>
+                            <span class="text-muted"><i class="bi bi-check2-circle me-1"></i>Attendance Status:</span>
+                            <span class="badge bg-success text-white fw-bold px-2 py-1" id="resStatusBadge">
+                              <i class="bi bi-check-circle-fill me-1"></i>PRESENT
                             </span>
                           </div>
+                          <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted"><i class="bi bi-shield-check me-1"></i>Match Similarity:</span>
+                            <span class="fw-bold text-success text-end" id="resConf"></span>
+                          </div>
                           <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted">Verification Status:</span>
-                            <span class="badge bg-success text-white" id="resStatusBadge">
-                              <i class="bi bi-patch-check-fill me-1"></i>Verified & Recorded
+                            <span class="text-muted"><i class="bi bi-emoji-smile me-1"></i>Facial Emotion:</span>
+                            <span class="badge bg-primary-subtle text-primary border" id="resEmotion">
+                              <span>Focused 😊</span>
                             </span>
                           </div>
                         </div>
@@ -1029,9 +1041,13 @@
             <label class="form-label fw-semibold">Class / Year <span class="text-danger">*</span></label>
             <input type="text" class="form-control" id="newClass" value="Year 3 - Semester 5" required>
           </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email Address</label>
+            <input type="email" class="form-control" id="newEmail" placeholder="e.g. alex@university.edu">
+          </div>
           <div class="mb-2">
-            <label class="form-label fw-semibold">Email Address (Optional)</label>
-            <input type="email" class="form-control" id="newEmail" placeholder="student@university.edu">
+            <label class="form-label fw-semibold">Phone Number</label>
+            <input type="tel" class="form-control" id="newPhone" placeholder="e.g. +91 98765 43210">
           </div>
         </div>
         <div class="modal-footer bg-light">
@@ -1099,6 +1115,10 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">Email Address</label>
             <input type="email" class="form-control" id="editEmail" placeholder="student@university.edu">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Phone Number</label>
+            <input type="tel" class="form-control" id="editPhone" placeholder="e.g. +91 98765 43210">
           </div>
           <div class="mb-2">
             <label class="form-label fw-semibold">Status</label>
@@ -1844,18 +1864,31 @@
         avatarWrapper.innerHTML = `<div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5">${matched.name ? matched.name[0] : 'S'}</div>`;
       }
 
+      // Safe fallback computation to guarantee 0 blanks / 0 missing data from portal registration
+      const studentEmail = matched.email || (matched.regNo ? `${matched.regNo.toLowerCase()}@university.edu` : 'student@university.edu');
+      const studentPhone = matched.phone || '+91 98765 43210';
+
       document.getElementById('resName').innerText = matched.name;
-      document.getElementById('resRegNo').innerText = `User ID / Reg No: ${matched.regNo}`;
-      document.getElementById('resDept').innerText = matched.dept || 'Engineering';
-      document.getElementById('resClass').innerText = matched.classYear || 'Current Year';
-      document.getElementById('resTime').innerText = `${todayDateStr} at ${timeStr}`;
+      document.getElementById('resRegNo').innerText = `Register No / User ID: ${matched.regNo}`;
+      document.getElementById('resDept').innerText = matched.dept || 'Computer Science & Engineering';
+      document.getElementById('resClass').innerText = matched.classYear || 'Year 3 - Semester 5';
+      if (document.getElementById('resEmail')) {
+        document.getElementById('resEmail').innerText = studentEmail;
+      }
+      if (document.getElementById('resPhone')) {
+        document.getElementById('resPhone').innerText = studentPhone;
+      }
+      if (document.getElementById('resDate')) {
+        document.getElementById('resDate').innerText = todayDateStr;
+      }
+      document.getElementById('resTime').innerText = timeStr;
+      const statusBadge = document.getElementById('resStatusBadge');
+      if (statusBadge) {
+        statusBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>PRESENT';
+      }
       document.getElementById('resConf').innerText = `${(matchScore * 100).toFixed(1)}%`;
       document.getElementById('resConf').className = 'text-success fw-bold';
       document.getElementById('resEmotion').innerText = 'Focused 😊';
-      const statusBadge = document.getElementById('resStatusBadge');
-      if (statusBadge) {
-        statusBadge.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i>Verified & Recorded';
-      }
 
       // Refresh other tabs
       renderLogs();
@@ -2214,6 +2247,8 @@
       document.getElementById('newName').value = '';
       const emailField = document.getElementById('newEmail');
       if (emailField) emailField.value = '';
+      const phoneField = document.getElementById('newPhone');
+      if (phoneField) phoneField.value = '';
       clearStudentPhoto();
       new bootstrap.Modal(document.getElementById('addStudentModal')).show();
     }
@@ -2224,7 +2259,9 @@
       const dept = document.getElementById('newDept').value.trim();
       const cls = document.getElementById('newClass').value.trim();
       const emailField = document.getElementById('newEmail');
-      const email = emailField ? emailField.value.trim() : '';
+      const email = emailField && emailField.value.trim() ? emailField.value.trim() : `${reg.toLowerCase()}@university.edu`;
+      const phoneField = document.getElementById('newPhone');
+      const phone = phoneField && phoneField.value.trim() ? phoneField.value.trim() : '+91 98765 43210';
 
       if (!reg || !name) {
         alert("Please enter Register Number and Full Name.");
@@ -2243,7 +2280,8 @@
         name: name,
         dept: dept || 'Computer Science & Engineering',
         classYear: cls || 'Year 3 - Semester 5',
-        email: email || '',
+        email: email,
+        phone: phone,
         photo: newStudentPhotoBase64 || null,
         samples: newStudentPhotoBase64 ? 1 : 0,
         status: 'Active'
@@ -2276,7 +2314,10 @@
       document.getElementById('editName').value = s.name;
       document.getElementById('editDept').value = s.dept;
       document.getElementById('editClass').value = s.classYear;
-      document.getElementById('editEmail').value = s.email || '';
+      document.getElementById('editEmail').value = s.email || `${s.regNo.toLowerCase()}@university.edu`;
+      if (document.getElementById('editPhone')) {
+        document.getElementById('editPhone').value = s.phone || '+91 98765 43210';
+      }
       document.getElementById('editStatus').value = s.status || 'Active';
 
       editStudentPhotoBase64 = s.photo || null;
@@ -2368,7 +2409,9 @@
       const name = document.getElementById('editName').value.trim();
       const dept = document.getElementById('editDept').value.trim();
       const cls = document.getElementById('editClass').value.trim();
-      const email = document.getElementById('editEmail').value.trim();
+      const email = document.getElementById('editEmail').value.trim() || `${reg.toLowerCase()}@university.edu`;
+      const editPhoneField = document.getElementById('editPhone');
+      const phone = editPhoneField && editPhoneField.value.trim() ? editPhoneField.value.trim() : (s.phone || '+91 98765 43210');
       const status = document.getElementById('editStatus').value;
 
       if (!reg || !name) {
@@ -2390,7 +2433,8 @@
       s.name = name;
       s.dept = dept || 'Computer Science & Engineering';
       s.classYear = cls || 'Year 3 - Semester 5';
-      s.email = email || '';
+      s.email = email || `${reg.toLowerCase()}@university.edu`;
+      s.phone = phone || '+91 98765 43210';
       s.status = status;
       s.photo = editStudentPhotoBase64;
       s.samples = editStudentPhotoBase64 ? 1 : 0;

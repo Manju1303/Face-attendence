@@ -547,6 +547,12 @@ class BiometricAttendanceSystemTestSuite(unittest.TestCase):
         self.assertEqual(data['student']['name'], 'R. Dharanika')
         self.assertEqual(data['student']['register_number'], 'CS2026021')
         self.assertEqual(data['student']['department'], 'Information Technology')
+        self.assertEqual(data['student']['class_year'], 'Year 3 - Semester 5')
+        self.assertEqual(data['student']['email'], 'dharanika@university.edu')
+        self.assertTrue(len(data['student']['phone_number']) > 5)
+        self.assertIn('attendance_date', data['student'])
+        self.assertIn('check_in_time', data)
+        self.assertEqual(data['student']['status'], 'PRESENT')
         self.assertNotEqual(data['student']['name'], 'K. Dharshini')
         self.assertNotEqual(data['student']['register_number'], 'CS2026022')
 

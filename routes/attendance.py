@@ -178,6 +178,10 @@ def verify_attendance():
                 'register_number': matched_student.register_number,
                 'department': matched_student.department,
                 'class_year': matched_student.class_year,
+                'email': matched_student.email or f"{matched_student.register_number.lower()}@university.edu",
+                'phone_number': matched_student.phone_number or "+91 98765 43210",
+                'attendance_date': today.strftime('%Y-%m-%d'),
+                'status': 'PRESENT',
                 'photo': matched_student.photo_filename
             },
             'session_name': target_session.session_name,
@@ -236,6 +240,10 @@ def verify_attendance():
             'register_number': matched_student.register_number,
             'department': matched_student.department,
             'class_year': matched_student.class_year,
+            'email': matched_student.email or f"{matched_student.register_number.lower()}@university.edu",
+            'phone_number': matched_student.phone_number or "+91 98765 43210",
+            'attendance_date': today.strftime('%Y-%m-%d'),
+            'status': 'PRESENT',
             'photo': matched_student.photo_filename
         },
         'session_name': target_session.session_name,

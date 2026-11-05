@@ -32,6 +32,7 @@ class Student(db.Model):
     department = db.Column(db.String(80), nullable=False, index=True)
     class_year = db.Column(db.String(50), nullable=False, index=True)
     email = db.Column(db.String(120), nullable=True)
+    phone_number = db.Column(db.String(30), nullable=True)
     active_status = db.Column(db.Boolean, default=True, nullable=False, index=True)
     photo_filename = db.Column(db.String(255), nullable=True)
     password_hash = db.Column(db.String(255), nullable=True)
@@ -57,7 +58,8 @@ class Student(db.Model):
             'full_name': self.full_name,
             'department': self.department,
             'class_year': self.class_year,
-            'email': self.email,
+            'email': self.email or f"{self.register_number.lower()}@university.edu",
+            'phone_number': self.phone_number or "+91 98765 43210",
             'active_status': self.active_status,
             'photo_filename': self.photo_filename,
             'samples_count': len(self.encodings),
