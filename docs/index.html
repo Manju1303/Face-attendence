@@ -472,17 +472,18 @@
                         </div>
                       </div>
 
-                      <div id="studentDetailsCard" class="bg-white p-3 rounded-3 border mb-3 shadow-sm">
+                      <!-- Profile Card: Displayed ONLY for Recognized Registered Member -->
+                      <div id="studentDetailsCard" class="bg-white p-3 rounded-3 border mb-3 shadow-sm d-none">
                         
                         <div class="d-flex align-items-center gap-3 mb-2">
                           <div id="resAvatarWrapper">
                             <div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-5" id="resAvatar">
-                              -
+                              👤
                             </div>
                           </div>
                           <div>
-                            <h5 class="fw-bold mb-0 text-dark" id="resName">--</h5>
-                            <code id="resRegNo" class="fs-6 text-primary fw-semibold">--</code>
+                            <h5 class="fw-bold mb-0 text-dark" id="resName">Registered Member</h5>
+                            <code id="resRegNo" class="fs-6 text-primary fw-semibold">User ID</code>
                           </div>
                         </div>
 
@@ -491,24 +492,30 @@
                         <div class="small">
                           <div class="d-flex justify-content-between mb-1">
                             <span class="text-muted">Department:</span>
-                            <span class="fw-semibold text-end" id="resDept">-</span>
+                            <span class="fw-semibold text-end" id="resDept"></span>
                           </div>
                           <div class="d-flex justify-content-between mb-1">
                             <span class="text-muted">Class / Year:</span>
-                            <span class="fw-semibold text-end" id="resClass">-</span>
+                            <span class="fw-semibold text-end" id="resClass"></span>
                           </div>
                           <div class="d-flex justify-content-between mb-1">
                             <span class="text-muted">Check-In Time:</span>
-                            <span class="fw-bold text-primary font-monospace text-end" id="resTime">-</span>
+                            <span class="fw-bold text-primary font-monospace text-end" id="resTime"></span>
                           </div>
                           <div class="d-flex justify-content-between mb-1">
                             <span class="text-muted">Match Similarity:</span>
-                            <span class="fw-bold text-success text-end" id="resConf">-</span>
+                            <span class="fw-bold text-success text-end" id="resConf"></span>
                           </div>
-                          <div class="d-flex justify-content-between align-items-center">
+                          <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="text-muted">Facial Emotion:</span>
                             <span class="badge bg-primary-subtle text-primary border" id="resEmotion">
-                              <span>-</span>
+                              <span>Focused 😊</span>
+                            </span>
+                          </div>
+                          <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Verification Status:</span>
+                            <span class="badge bg-success text-white" id="resStatusBadge">
+                              <i class="bi bi-patch-check-fill me-1"></i>Verified & Recorded
                             </span>
                           </div>
                         </div>
@@ -1647,6 +1654,9 @@
       if (isScanning) return;
       isScanning = true;
 
+      const detailsCard = document.getElementById('studentDetailsCard');
+      if (detailsCard) detailsCard.classList.add('d-none');
+
       document.getElementById('idleState').classList.add('d-none');
       document.getElementById('resultBox').classList.add('d-none');
       document.getElementById('scanningState').classList.remove('d-none');
@@ -1668,21 +1678,12 @@
       // 1. Guard against empty student database or lack of registered photos
       const enrolledStudents = students.filter(s => s.photo && s.status !== 'Inactive');
       if (!students || students.length === 0 || enrolledStudents.length === 0) {
+        if (detailsCard) detailsCard.classList.add('d-none');
         resultBox.className = 'result-box text-start p-3 rounded-3 bg-warning-subtle border border-warning-subtle text-warning-emphasis';
         document.getElementById('resultIcon').innerHTML = '<i class="bi bi-person-x-fill text-warning"></i>';
         document.getElementById('resultTitle').innerText = 'No Registered Faces';
         document.getElementById('resultSubtitle').innerText = 'Registration Required';
         document.getElementById('resMessage').innerText = 'No registered student faces found in the database. Please register students with face photos in the Students Directory first.';
-
-        document.getElementById('resAvatarWrapper').innerHTML = '<div class="student-avatar bg-secondary-subtle text-muted d-flex align-items-center justify-content-center fw-bold fs-5"><i class="bi bi-question"></i></div>';
-        document.getElementById('resName').innerText = 'No Registered Faces';
-        document.getElementById('resRegNo').innerText = 'N/A';
-        document.getElementById('resDept').innerText = '-';
-        document.getElementById('resClass').innerText = '-';
-        document.getElementById('resTime').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        document.getElementById('resConf').innerText = '0.0%';
-        document.getElementById('resConf').className = 'text-muted fw-bold';
-        document.getElementById('resEmotion').innerText = 'Neutral';
 
         playBeep('info');
         isScanning = false;
@@ -1691,21 +1692,12 @@
 
       // 2. Guard against camera offline / denied / no captured frame
       if (!capturedPhoto) {
+        if (detailsCard) detailsCard.classList.add('d-none');
         resultBox.className = 'result-box text-start p-3 rounded-3 bg-danger-subtle border border-danger-subtle text-danger-emphasis';
         document.getElementById('resultIcon').innerHTML = '<i class="bi bi-camera-video-off-fill text-danger"></i>';
         document.getElementById('resultTitle').innerText = 'Camera Offline / Denied';
         document.getElementById('resultSubtitle').innerText = 'Live Feed Required';
         document.getElementById('resMessage').innerText = 'Camera access is required for facial recognition. Please grant camera permission or select a valid camera device.';
-
-        document.getElementById('resAvatarWrapper').innerHTML = '<div class="student-avatar bg-danger-subtle text-danger d-flex align-items-center justify-content-center fw-bold fs-4"><i class="bi bi-camera-video-off"></i></div>';
-        document.getElementById('resName').innerText = 'Camera Offline';
-        document.getElementById('resRegNo').innerText = 'OFFLINE';
-        document.getElementById('resDept').innerText = '-';
-        document.getElementById('resClass').innerText = '-';
-        document.getElementById('resTime').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        document.getElementById('resConf').innerText = '0.0%';
-        document.getElementById('resConf').className = 'text-danger fw-bold';
-        document.getElementById('resEmotion').innerText = 'Offline ❌';
 
         playBeep('error');
         isScanning = false;
@@ -1717,20 +1709,12 @@
 
       // Check if camera is covered / blank / low light
       if (!liveFeatures || liveFeatures.stdDev < 10) {
+        if (detailsCard) detailsCard.classList.add('d-none');
         resultBox.className = 'result-box text-start p-3 rounded-3 bg-warning-subtle border border-warning-subtle text-warning-emphasis';
         document.getElementById('resultIcon').innerHTML = '<i class="bi bi-eye-slash-fill text-warning"></i>';
         document.getElementById('resultTitle').innerText = 'No Face Detected';
         document.getElementById('resultSubtitle').innerText = 'Camera Obscured or Low Light';
         document.getElementById('resMessage').innerText = 'Please ensure proper lighting and position your face directly inside the scanning portal.';
-        document.getElementById('resAvatarWrapper').innerHTML = `<img src="${capturedPhoto}" class="student-avatar shadow-sm object-fit-cover" alt="Captured Frame">`;
-        document.getElementById('resName').innerText = 'No Face Detected';
-        document.getElementById('resRegNo').innerText = 'SCAN FAILED';
-        document.getElementById('resDept').innerText = '-';
-        document.getElementById('resClass').innerText = '-';
-        document.getElementById('resTime').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        document.getElementById('resConf').innerText = '0.0%';
-        document.getElementById('resConf').className = 'text-warning fw-bold';
-        document.getElementById('resEmotion').innerText = 'Undetected 😐';
 
         playBeep('info');
         isScanning = false;
@@ -1786,28 +1770,21 @@
 
       // 5. Strict Rejection if Unknown Face / Unregistered Person / Low Similarity
       if (!matched) {
+        if (detailsCard) detailsCard.classList.add('d-none');
         resultBox.className = 'result-box text-start p-3 rounded-3 bg-danger-subtle border border-danger-subtle text-danger-emphasis';
         document.getElementById('resultIcon').innerHTML = '<i class="bi bi-person-x-fill text-danger"></i>';
-        document.getElementById('resultTitle').innerText = 'Face Not Registered';
+        document.getElementById('resultTitle').innerText = 'ACCESS DENIED – FACE NOT RECOGNIZED';
         document.getElementById('resultSubtitle').innerText = `Unregistered Face - Access Denied (${(matchScore * 100).toFixed(1)}%)`;
-        document.getElementById('resMessage').innerText = 'Face Not Registered. Attendance is not marked. Only registered faces are accepted.';
-
-        document.getElementById('resAvatarWrapper').innerHTML = `<img src="${capturedPhoto}" class="student-avatar shadow-sm object-fit-cover border border-2 border-danger" alt="Face Not Registered">`;
-        document.getElementById('resName').innerText = 'Face Not Registered';
-        document.getElementById('resRegNo').innerText = 'UNREGISTERED';
-        document.getElementById('resDept').innerText = 'Not Enrolled';
-        document.getElementById('resClass').innerText = '-';
-        document.getElementById('resTime').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        document.getElementById('resConf').innerText = `${(matchScore * 100).toFixed(1)}%`;
-        document.getElementById('resConf').className = 'text-danger fw-bold';
-        document.getElementById('resEmotion').innerText = 'Unregistered 🚫';
+        document.getElementById('resMessage').innerText = 'ACCESS DENIED – FACE NOT RECOGNIZED. Scanned face does not match any registered member. Attendance not marked.';
 
         playBeep('error');
         isScanning = false;
         return; // ABSOLUTELY NO ATTENDANCE RECORDED!
       }
 
-      // 6. Match Verified! Record Attendance Entry (with exact current scan time)
+      // 6. Match Verified! Unhide Profile Card and Display ONLY Recognized Person's Details
+      if (detailsCard) detailsCard.classList.remove('d-none');
+
       const todayDateStr = new Date().toISOString().slice(0, 10);
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const sessionName = document.getElementById('sessionSelect').selectedOptions[0].text;
@@ -1844,7 +1821,7 @@
         localStorage.setItem('bio_logs', JSON.stringify(attendanceLogs));
       }
 
-      // UI Confirmation Card
+      // UI Confirmation Box
       resultBox.className = 'result-box text-start p-3 rounded-3 bg-success-subtle border border-success-subtle text-success';
       document.getElementById('resultIcon').innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
 
@@ -1859,7 +1836,7 @@
       }
       playBeep('success');
 
-      // Display Matched Student's Registered Photo & Info
+      // Display Matched Student's Registered Photo & Info ONLY (Zero Blanks / Zero Placeholders)
       const avatarWrapper = document.getElementById('resAvatarWrapper');
       if (matched.photo) {
         avatarWrapper.innerHTML = `<img src="${matched.photo}" class="student-avatar shadow-sm object-fit-cover border border-2 border-success" alt="${matched.name}">`;
@@ -1868,13 +1845,17 @@
       }
 
       document.getElementById('resName').innerText = matched.name;
-      document.getElementById('resRegNo').innerText = `Face ID: ${matched.regNo}`;
-      document.getElementById('resDept').innerText = matched.dept;
-      document.getElementById('resClass').innerText = matched.classYear;
-      document.getElementById('resTime').innerText = timeStr;
+      document.getElementById('resRegNo').innerText = `User ID / Reg No: ${matched.regNo}`;
+      document.getElementById('resDept').innerText = matched.dept || 'Engineering';
+      document.getElementById('resClass').innerText = matched.classYear || 'Current Year';
+      document.getElementById('resTime').innerText = `${todayDateStr} at ${timeStr}`;
       document.getElementById('resConf').innerText = `${(matchScore * 100).toFixed(1)}%`;
       document.getElementById('resConf').className = 'text-success fw-bold';
-      document.getElementById('resEmotion').innerText = 'Verified Focused 😊';
+      document.getElementById('resEmotion').innerText = 'Focused 😊';
+      const statusBadge = document.getElementById('resStatusBadge');
+      if (statusBadge) {
+        statusBadge.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i>Verified & Recorded';
+      }
 
       // Refresh other tabs
       renderLogs();

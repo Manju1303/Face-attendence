@@ -77,6 +77,15 @@ def verify_attendance():
             'message': 'No face detected. Please position your face clearly in the camera view.'
         })
 
+    # Multiple face detection: avoid accidental authentication
+    prominent_faces = [f for f in faces if f['bbox'][2] >= 40 and f['bbox'][3] >= 40]
+    if len(prominent_faces) > 1:
+        return jsonify({
+            'success': False,
+            'status': 'MULTIPLE_FACES',
+            'message': 'ACCESS DENIED – MULTIPLE FACES. Please ensure only one person is in front of the camera.'
+        })
+
     # Pick the most prominent/highest confidence face
     face_data = max(faces, key=lambda f: f['confidence'])
     bbox = face_data['bbox']
@@ -128,7 +137,7 @@ def verify_attendance():
         return jsonify({
             'success': False,
             'status': 'UNRECOGNIZED',
-            'message': 'Face Not Registered. Attendance is not marked.',
+            'message': 'ACCESS DENIED – FACE NOT RECOGNIZED. Scanned face does not match any registered member.',
             'confidence': round(similarity_score * 100, 1) if similarity_score > 0 else 0.0,
             'bbox': bbox
         })

@@ -444,6 +444,120 @@ class BiometricAttendanceSystemTestSuite(unittest.TestCase):
             count = Attendance.query.filter_by(student_id=s_id, session_id=session_id).count()
             self.assertEqual(count, 1)
 
+    def test_16b_access_denied_unrecognized_and_multiple_faces(self):
+        """Verify strict ACCESS DENIED rejection for unregistered faces and multiple faces in frame."""
+        with self.app.app_context():
+            sess = ClassSession.query.first()
+            session_id = sess.id
+            student = Student.query.filter_by(register_number='CS2026001').first()
+            # Register synthetic orthogonal face encoding for student
+            dummy_emb = np.zeros(128, dtype=np.float32)
+            dummy_emb[0] = 1.0  # orthogonal to real faces
+            FaceEncoding.query.filter_by(student_id=student.id).delete()
+            fe = FaceEncoding(student_id=student.id)
+            fe.set_embedding(dummy_emb)
+            db.session.add(fe)
+            db.session.commit()
+
+        # 1. Real Lena face does not match orthogonal embedding -> UNRECOGNIZED
+        resp = self.client.post('/api/verify-attendance', json={
+            'image': self.lena_b64,
+            'session_id': session_id
+        })
+        data = resp.get_json()
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(data['success'])
+        self.assertEqual(data['status'], 'UNRECOGNIZED')
+        self.assertIn('ACCESS DENIED – FACE NOT RECOGNIZED', data['message'])
+
+        # Ensure NO attendance was marked
+        with self.app.app_context():
+            self.assertEqual(Attendance.query.count(), 0)
+
+        # 2. Multi-face frame (side-by-side Lena faces) -> MULTIPLE_FACES
+        lena_img = cv2.imread('test_images/lena.jpg')
+        two_faces = np.hstack([lena_img, lena_img])
+        _, buf = cv2.imencode('.jpg', two_faces)
+        two_faces_b64 = "data:image/jpeg;base64," + base64.b64encode(buf).decode()
+
+        resp_multi = self.client.post('/api/verify-attendance', json={
+            'image': two_faces_b64,
+            'session_id': session_id
+        })
+        data_multi = resp_multi.get_json()
+        self.assertEqual(resp_multi.status_code, 200)
+        self.assertFalse(data_multi['success'])
+        self.assertEqual(data_multi['status'], 'MULTIPLE_FACES')
+        self.assertIn('ACCESS DENIED – MULTIPLE FACES', data_multi['message'])
+
+    def test_16c_individual_face_isolation_and_no_cross_contamination(self):
+        """Verify that when a member scans their face, only that exact person's details are retrieved and recorded."""
+        self.client.post('/login', data={
+            'login_role': 'admin',
+            'admin_username': 'sysadmin',
+            'admin_password': 'AdminSecurePass2026!'
+        })
+
+        with self.app.app_context():
+            # Add Member 1: R. Dharanika
+            dharanika = Student(
+                register_number='CS2026021',
+                full_name='R. Dharanika',
+                department='Information Technology',
+                class_year='Year 3 - Semester 5',
+                email='dharanika@university.edu',
+                active_status=True
+            )
+            dharanika.set_password('PassDharanika123')
+            db.session.add(dharanika)
+
+            # Add Member 2: K. Dharshini
+            dharshini = Student(
+                register_number='CS2026022',
+                full_name='K. Dharshini',
+                department='Computer Science & Engineering',
+                class_year='Year 3 - Semester 5',
+                email='dharshini@university.edu',
+                active_status=True
+            )
+            dharshini.set_password('PassDharshini123')
+            db.session.add(dharshini)
+            db.session.commit()
+
+            dharanika_id = dharanika.id
+            dharshini_id = dharshini.id
+            sess_id = ClassSession.query.first().id
+
+        # Enroll face for Dharanika
+        self.client.post(f'/admin/students/{dharanika_id}/re-enroll', data={
+            'face_samples': json.dumps([self.lena_b64])
+        })
+
+        # Scan face (Lena)
+        resp = self.client.post('/api/verify-attendance', json={
+            'image': self.lena_b64,
+            'session_id': sess_id
+        })
+        data = resp.get_json()
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(data['success'])
+        self.assertEqual(data['status'], 'SUCCESS')
+
+        # Verify ONLY Dharanika's details are returned
+        self.assertEqual(data['student']['name'], 'R. Dharanika')
+        self.assertEqual(data['student']['register_number'], 'CS2026021')
+        self.assertEqual(data['student']['department'], 'Information Technology')
+        self.assertNotEqual(data['student']['name'], 'K. Dharshini')
+        self.assertNotEqual(data['student']['register_number'], 'CS2026022')
+
+        # Verify DB records: Dharanika has 1 attendance, Dharshini has 0
+        with self.app.app_context():
+            att_dharanika = Attendance.query.filter_by(student_id=dharanika_id).all()
+            att_dharshini = Attendance.query.filter_by(student_id=dharshini_id).all()
+            self.assertEqual(len(att_dharanika), 1)
+            self.assertEqual(len(att_dharshini), 0)
+            self.assertEqual(att_dharanika[0].student.full_name, 'R. Dharanika')
+
     # =========================================================================
     # MODULE 4: AUDIT TRAIL, SESSION SCHEDULING & REPORTING
     # =========================================================================
