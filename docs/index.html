@@ -1564,28 +1564,50 @@
         img.crossOrigin = "Anonymous";
         img.onload = () => {
           try {
-            const size = 32;
             const srcCanvas = document.createElement('canvas');
             srcCanvas.width = img.width;
             srcCanvas.height = img.height;
             const srcCtx = srcCanvas.getContext('2d');
             srcCtx.drawImage(img, 0, 0);
 
-            // 1. Full frame variants (Normal & Flipped)
-            const fullNorm = extractVariantFeatures(srcCtx, 0, 0, img.width, img.height, size, false);
-            const fullFlip = extractVariantFeatures(srcCtx, 0, 0, img.width, img.height, size, true);
+            // Isolate ONLY the face region, completely removing room background
+            const aspect = img.width / img.height;
+            let fx, fy, fw, fh;
+            if (aspect > 1.2) {
+              // Webcam landscape frame: user's face is centered inside the oval scanning guide
+              fw = Math.round(img.width * 0.44);
+              fh = Math.round(img.height * 0.58);
+              fx = Math.round((img.width - fw) / 2);
+              fy = Math.round(img.height * 0.16);
+            } else {
+              // Standard student portrait / avatar photo
+              fw = Math.round(img.width * 0.74);
+              fh = Math.round(img.height * 0.80);
+              fx = Math.round((img.width - fw) / 2);
+              fy = Math.round((img.height - fh) / 2);
+            }
 
-            // 2. Centered face crop variants (focusing on face anatomy)
-            const cx = img.width * 0.125;
-            const cy = img.height * 0.10;
-            const cw = img.width * 0.75;
-            const ch = img.height * 0.78;
-            const cropNorm = extractVariantFeatures(srcCtx, cx, cy, cw, ch, size, false);
-            const cropFlip = extractVariantFeatures(srcCtx, cx, cy, cw, ch, size, true);
+            const size = 32;
+            // Face variants: normal & flipped
+            const normFace = extractVariantFeatures(srcCtx, fx, fy, fw, fh, size, false);
+            const flipFace = extractVariantFeatures(srcCtx, fx, fy, fw, fh, size, true);
+
+            // Upper face (eyes, eyebrows, forehead)
+            const eyeH = Math.round(fh * 0.46);
+            const eyeNorm = extractVariantFeatures(srcCtx, fx, fy, fw, eyeH, size, false);
+            const eyeFlip = extractVariantFeatures(srcCtx, fx, fy, fw, eyeH, size, true);
+
+            // Lower face (nose, mouth, jaw)
+            const lowerY = fy + Math.round(fh * 0.42);
+            const lowerH = fh - Math.round(fh * 0.42);
+            const lowerNorm = extractVariantFeatures(srcCtx, fx, lowerY, fw, lowerH, size, false);
+            const lowerFlip = extractVariantFeatures(srcCtx, fx, lowerY, fw, lowerH, size, true);
 
             resolve({
-              stdDev: Math.max(fullNorm.stdDev, cropNorm.stdDev),
-              variants: [fullNorm, fullFlip, cropNorm, cropFlip]
+              stdDev: normFace.stdDev,
+              variants: [normFace, flipFace],
+              eyeVariants: [eyeNorm, eyeFlip],
+              lowerVariants: [lowerNorm, lowerFlip]
             });
           } catch (e) {
             console.warn("Face feature extraction error:", e);
@@ -1613,7 +1635,7 @@
       if (!featA || !featB || !featA.variants || !featB.variants) return 0.0;
       if (featA.stdDev < 10 || featB.stdDev < 10) return 0.05;
 
-      let maxSim = 0.0;
+      let maxFaceSim = 0.0;
       for (const vA of featA.variants) {
         for (const vB of featB.variants) {
           // 1. Difference Hash Structural Similarity
@@ -1624,7 +1646,7 @@
           }
           const hashSim = matches / len;
 
-          // 2. Grayscale Normalized Pearson Correlation
+          // 2. Grayscale Normalized Pearson Correlation (Facial Contours)
           let dot = 0, normA = 0, normB = 0;
           for (let i = 0; i < vA.grays.length; i++) {
             const da = vA.grays[i] - vA.avg;
@@ -1636,25 +1658,47 @@
           const denom = Math.sqrt(normA * normB);
           const corr = denom > 0 ? Math.max(0, dot / denom) : 0;
 
-          // 3. Color Vector Similarity
+          // 3. Color & Skin Complexion Vector Similarity
           let colDiff = 0;
           for (let i = 0; i < 3; i++) {
             colDiff += Math.abs(vA.colorVector[i] - vB.colorVector[i]);
           }
           const colorSim = Math.max(0, 1 - (colDiff / 3));
 
-          const sim = (hashSim * 0.45) + (corr * 0.40) + (colorSim * 0.15);
-          if (sim > maxSim) maxSim = sim;
+          const sim = (hashSim * 0.40) + (corr * 0.45) + (colorSim * 0.15);
+          if (sim > maxFaceSim) maxFaceSim = sim;
         }
       }
-      return maxSim;
+
+      // 4. Eye & Upper Face Consistency (Crucial to prevent recognizing person A for person B)
+      let maxEyeSim = 0.0;
+      if (featA.eyeVariants && featB.eyeVariants) {
+        for (const eA of featA.eyeVariants) {
+          for (const eB of featB.eyeVariants) {
+            let dot = 0, normA = 0, normB = 0;
+            for (let i = 0; i < eA.grays.length; i++) {
+              const da = eA.grays[i] - eA.avg;
+              const db = eB.grays[i] - eB.avg;
+              dot += da * db;
+              normA += da * da;
+              normB += db * db;
+            }
+            const denom = Math.sqrt(eNormA * eNormB);
+            const corr = denom > 0 ? Math.max(0, dot / denom) : 0;
+            if (corr > maxEyeSim) maxEyeSim = corr;
+          }
+        }
+      }
+
+      // If eye/facial geometry shows a different person, penalize cross-person match
+      const finalScore = maxEyeSim > 0 ? (maxFaceSim * 0.70) + (maxEyeSim * 0.30) : maxFaceSim;
+      return finalScore;
     }
 
     // Dynamic Kiosk Target Student Dropdown
     function updateKioskStudentDropdown() {
       const select = document.getElementById('kioskTargetSelect');
       if (!select) return;
-      const currentVal = select.value;
       select.innerHTML = '<option value="auto">✨ Auto Face Match</option>';
       students.forEach(s => {
         const opt = document.createElement('option');
@@ -1662,11 +1706,8 @@
         opt.innerText = `👤 ${s.name} (${s.regNo})`;
         select.appendChild(opt);
       });
-      if (students.some(s => s.id == currentVal)) {
-        select.value = currentVal;
-      } else {
-        select.value = 'auto';
-      }
+      // Always maintain Auto Face Match by default
+      select.value = 'auto';
     }
 
     // Biometric Face Scanner Execution
@@ -1761,7 +1802,7 @@
       }
 
       // 4. Strict Biometric Matching against Enrolled Students
-      const STRICT_MATCH_THRESHOLD = 0.52; // 52% minimum biometric similarity across multi-scale & dual-orientation
+      const STRICT_MATCH_THRESHOLD = 0.58; // 58% minimum biometric similarity on tight facial anatomy
       const targetSelect = document.getElementById('kioskTargetSelect');
       const selectedTargetId = targetSelect ? targetSelect.value : 'auto';
 
@@ -1770,7 +1811,7 @@
 
       if (selectedTargetId !== 'auto') {
         // Specific manual target selected: strictly verify live face against this student
-        const targetStudent = enrolledStudents.find(s => s.id == selectedTargetId);
+        const targetStudent = enrolledStudents.find(s => String(s.id) === String(selectedTargetId));
         if (targetStudent && targetStudent.photo) {
           const sFeat = await getStudentBiometrics(targetStudent);
           if (sFeat) {
@@ -1787,14 +1828,18 @@
         // Automatic Biometric Recognition: iterate through all enrolled students with photos
         let bestStudent = null;
         let bestScore = -1;
+        let secondBestScore = -1;
 
         for (const s of enrolledStudents) {
           const sFeat = await getStudentBiometrics(s);
           if (sFeat) {
             const score = computeBiometricSimilarity(liveFeatures, sFeat);
             if (score > bestScore) {
+              secondBestScore = bestScore;
               bestScore = score;
               bestStudent = s;
+            } else if (score > secondBestScore) {
+              secondBestScore = score;
             }
           }
         }
@@ -1914,6 +1959,9 @@
       document.getElementById('resConf').innerText = `${(matchScore * 100).toFixed(1)}%`;
       document.getElementById('resConf').className = 'text-success fw-bold';
       document.getElementById('resEmotion').innerText = 'Focused 😊';
+
+      // Keep active student profile in sync with currently verified member
+      activeStudentProfile = matched;
 
       // Explicitly unhide Details Card and Result Box
       if (detailsCard) {
@@ -2453,8 +2501,6 @@
       const dept = document.getElementById('editDept').value.trim();
       const cls = document.getElementById('editClass').value.trim();
       const email = document.getElementById('editEmail').value.trim() || `${reg.toLowerCase()}@university.edu`;
-      const editPhoneField = document.getElementById('editPhone');
-      const phone = editPhoneField && editPhoneField.value.trim() ? editPhoneField.value.trim() : (s.phone || '+91 98765 43210');
       const status = document.getElementById('editStatus').value;
 
       if (!reg || !name) {
@@ -2470,6 +2516,9 @@
 
       const s = students.find(x => x.id === id);
       if (!s) return;
+
+      const editPhoneField = document.getElementById('editPhone');
+      const phone = editPhoneField && editPhoneField.value.trim() ? editPhoneField.value.trim() : (s.phone || '+91 98765 43210');
 
       const oldReg = s.regNo;
       s.regNo = reg;
