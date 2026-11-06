@@ -372,6 +372,13 @@ def delete_student(student_id):
     student = db.get_or_404(Student, student_id)
     name = student.full_name
     reg = student.register_number
+    if student.photo_filename:
+        photo_path = Config.STUDENT_PHOTOS_DIR / student.photo_filename
+        if photo_path.exists():
+            try:
+                photo_path.unlink()
+            except Exception:
+                pass
     db.session.delete(student)
     db.session.commit()
     flash(f'Student "{name}" ({reg}) and all corresponding biometric data have been permanently removed.', 'info')

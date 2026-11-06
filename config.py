@@ -9,7 +9,10 @@ class Config:
     
     # Database - SQLite by default, easily switchable to PostgreSQL via DATABASE_URL
     # e.g., postgresql+psycopg2://user:password@localhost/attendance_db
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', f'sqlite:///{BASE_DIR / "attendance.db"}')
+    _raw_db_url = os.environ.get('DATABASE_URL', f'sqlite:///{BASE_DIR / "attendance.db"}')
+    if _raw_db_url.startswith('postgres://'):
+        _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
+    SQLALCHEMY_DATABASE_URI = _raw_db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Face Recognition Engine configuration

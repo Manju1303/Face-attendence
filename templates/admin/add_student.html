@@ -206,17 +206,29 @@
   } catch (e) {}
 
   // Initialize camera
+  let currentStream = null;
   async function startCamera() {
     try {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
       });
+      currentStream = stream;
       video.srcObject = stream;
+      await video.play().catch(() => {});
     } catch (err) {
       console.error("Camera access error:", err);
       showFeedback("Unable to access webcam. Please check browser camera permissions or use photo upload.", "danger");
     }
   }
+
+  window.addEventListener('beforeunload', () => {
+    if (currentStream) {
+      currentStream.getTracks().forEach(track => track.stop());
+    }
+  });
 
   startCamera();
   restartCamBtn.addEventListener('click', startCamera);
